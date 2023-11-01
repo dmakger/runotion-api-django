@@ -1,0 +1,79 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="24">
+            <item index="0" class="java.lang.String" itemvalue="mysql-connector-python" />
+            <item index="1" class="java.lang.String" itemvalue="PyJWT" />
+            <item index="2" class="java.lang.String" itemvalue="django-ckeditor" />
+            <item index="3" class="java.lang.String" itemvalue="configparser" />
+            <item index="4" class="java.lang.String" itemvalue="charset-normalizer" />
+            <item index="5" class="java.lang.String" itemvalue="cryptography" />
+            <item index="6" class="java.lang.String" itemvalue="netifaces" />
+            <item index="7" class="java.lang.String" itemvalue="ufw" />
+            <item index="8" class="java.lang.String" itemvalue="zope.interface" />
+            <item index="9" class="java.lang.String" itemvalue="python-apt" />
+            <item index="10" class="java.lang.String" itemvalue="PyGObject" />
+            <item index="11" class="java.lang.String" itemvalue="ubuntu-advantage-tools" />
+            <item index="12" class="java.lang.String" itemvalue="python-debian" />
+            <item index="13" class="java.lang.String" itemvalue="distro-info" />
+            <item index="14" class="java.lang.String" itemvalue="systemd-python" />
+            <item index="15" class="java.lang.String" itemvalue="PyNaCl" />
+            <item index="16" class="java.lang.String" itemvalue="sos" />
+            <item index="17" class="java.lang.String" itemvalue="cloud-init" />
+            <item index="18" class="java.lang.String" itemvalue="dbus-python" />
+            <item index="19" class="java.lang.String" itemvalue="command-not-found" />
+            <item index="20" class="java.lang.String" itemvalue="language-selector" />
+            <item index="21" class="java.lang.String" itemvalue="sip" />
+            <item index="22" class="java.lang.String" itemvalue="unattended-upgrades" />
+            <item index="23" class="java.lang.String" itemvalue="Twisted" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="E501" />
+          <option value="E303" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="N802" />
+          <option value="N806" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="api.core.urls.*" />
+          <option value="BorderCoord.BorderCoord.get" />
+          <option value="list.__or__" />
+          <option value="api.core.collection.models_collection.Collection.objects" />
+          <option value="api.core.profile.models_profile.Profile.*" />
+          <option value="api.core.collection.models_collection.ProfileCollection.*" />
+          <option value="api.core.course.models_course.ProfileCourse.*" />
+          <option value="api.core.course.models_course.Course.*" />
+          <option value="api.core.course.models_course.Step.*" />
+          <option value="api.core.course.models_course.ProfileStep.*" />
+          <option value="api.core.course.models_course.Lesson.*" />
+          <option value="api.core.course.models_course.ProfileTheme.*" />
+          <option value="super.save" />
+          <option value="str.spilt" />
+          <option value="dict.get" />
+          <option value="list.__getitem__" />
+          <option value="django.db.models.fields.CharField.__add__" />
+          <option value="dict.__await__" />
+          <option value="databases.interfaces.Record.__setitem__" />
+          <option value="telethon.client.telegramclient.TelegramClient.__await__" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
