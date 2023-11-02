@@ -35,6 +35,23 @@ class RoleProject(models.Model):
         return self.name
 
 
+# ==============================
+#     Пользователь к проекту
+# =============================
+class UserToProject(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Пользователь')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
+    role = models.ForeignKey(RoleProject, on_delete=models.CASCADE, verbose_name='Роль')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Пользователь к проекту"
+        verbose_name_plural = "Пользователь к проектам"
+
+    def __str__(self):
+        return f'{self.project} {self.user} {self.role}'
+
+
 # ====================
 #   Этапы в проекте
 # ====================
