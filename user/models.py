@@ -4,14 +4,18 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
-# Create your models here.
+# =============================
+#   Расширенные пользователи
+# =============================
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     department = models.CharField(max_length=100)
-    image = models.ImageField(upload_to='images/')  # Обновленное поле для изображения
+    image = models.ImageField(upload_to='user/images/')
 
-    # Другие поля профиля пользователя
+    class Meta:
+        verbose_name = "Расширенный пользователь"
+        verbose_name_plural = "Расширенные пользователи"
 
     def __str__(self):
         return self.user.username
