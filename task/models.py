@@ -9,12 +9,15 @@ from user.models import UserProfile
 #     Задачи
 # ==============
 class Task(models.Model):
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Пользователь')
+    director = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Постановщик')
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
     name = models.CharField('Название', max_length=128)
     code = models.CharField('Код', max_length=128)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
-    section_project = models.ForeignKey(SectionProject, on_delete=models.CASCADE, verbose_name='Этап в проекте')
+    deadline = models.DateTimeField('Крайний срок', null=True, default=None, blank=True)
+    completed_at = models.DateTimeField('Дата завершения', null=True, default=None, blank=True)
+    section_project = models.ForeignKey(SectionProject, on_delete=models.SET_NULL, verbose_name='Этап в проекте',
+                                        null=True, blank=True, default=None)
 
     class Meta:
         verbose_name = "Задача"
@@ -22,6 +25,13 @@ class Task(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        created = self.pk is None
+        super(Task, self).save(*args, **kwargs)
+        if created:
+            responsible_task = UserPositionTask.objects.get(name='Ответственный')
+            UserToTask.objects.create(user=self.director, task=self, position=responsible_task)
 
 
 # ==========================================
@@ -42,10 +52,11 @@ class UserPositionTask(models.Model):
 # =============================
 #     Пользователь к задаче
 # =============================
-class UserPositionTaskToTask(models.Model):
+class UserToTask(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Пользователь')
     task = models.ForeignKey(Task, on_delete=models.CASCADE, verbose_name='Задача')
-    position = models.ForeignKey(UserPositionTask, on_delete=models.CASCADE, verbose_name='Должность пользователя в задачах')
+    position = models.ForeignKey(UserPositionTask, on_delete=models.CASCADE,
+                                 verbose_name='Должность пользователя в задачах')
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:
@@ -60,7 +71,7 @@ class UserPositionTaskToTask(models.Model):
 #     Комментарии у задачи
 # =============================
 class CommentTask(models.Model):
-    user = models.ForeignKey(UserPositionTaskToTask, on_delete=models.CASCADE, verbose_name='Пользователь')
+    user = models.ForeignKey(UserToTask, on_delete=models.CASCADE, verbose_name='Пользователь')
     text = models.TextField('Текст')
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
@@ -76,10 +87,10 @@ class CommentTask(models.Model):
 #     Чеклист у задачи
 # =============================
 class ChecklistTask(models.Model):
-    user = models.ForeignKey(UserPositionTaskToTask, on_delete=models.CASCADE, verbose_name='Пользователь')
+    user = models.ForeignKey(UserToTask, on_delete=models.CASCADE, verbose_name='Пользователь')
     name = models.CharField('Название', max_length=128)
     position = models.IntegerField('Позиция')
-    completed_at = models.DateTimeField('Дата завершения', auto_now_add=True)
+    completed_at = models.DateTimeField('Дата завершения', null=True, default=None, blank=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:
@@ -97,12 +108,12 @@ class SubtaskChecklist(models.Model):
     checklist = models.ForeignKey(ChecklistTask, on_delete=models.CASCADE, verbose_name='Чеклист')
     name = models.CharField('Название', max_length=128)
     position = models.IntegerField('Позиция')
-    completed_at = models.DateTimeField('Дата завершения', auto_now_add=True)
+    completed_at = models.DateTimeField('Дата завершения', null=True, default=None, blank=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:
-        verbose_name = "Чеклист у задачи"
-        verbose_name_plural = "Чеклисты у задачи"
+        verbose_name = "Подзадача в чеклисте"
+        verbose_name_plural = "Подзадачи в чеклистах"
 
     def __str__(self):
         return f"{self.checklist.name.task} ===> {self.name}"

@@ -7,6 +7,7 @@ from user.models import UserProfile
 #     Проект
 # ==============
 class Project(models.Model):
+    admin = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Админ')
     name = models.CharField('Название', max_length=128)
     code = models.CharField('Код', max_length=128)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
@@ -52,9 +53,9 @@ class UserToProject(models.Model):
         return f'{self.project} {self.user} {self.role}'
 
 
-# ====================
-#   Этапы в проекте
-# ====================
+# ===============================
+#   Этапы в проекте (Канбан)
+# ===============================
 class SectionProject(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
     name = models.CharField('Название', max_length=128)

@@ -10,7 +10,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'admin']
+        fields = ['id', 'name', 'admin', 'image']
 
     @staticmethod
     def get_admin(instance):
@@ -18,3 +18,9 @@ class ProjectSerializer(serializers.ModelSerializer):
         if len(user_to_project) == 0:
             return None
         return PreviewUserSerializer(user_to_project[0].user).data
+
+
+class PreviewProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ['id', 'name', 'image']

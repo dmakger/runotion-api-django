@@ -4,6 +4,8 @@ from rest_framework.response import Response
 
 from project.models import Project
 from project.serializers import ProjectSerializer
+from service.filter.project import ProjectFilter
+from service.order_by.order_by import order_by
 from service.pagination import Pagination
 
 
@@ -15,10 +17,18 @@ class ProjectView(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
     queryset = Project.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+    filter = ProjectFilter
+
 
     @action(methods=['get'], detail=False)
     def get_my_projects(self, request):
-        user_projects = self.queryset.filter(usertoproject__user__user=request.user).order_by('created_at')
-        result = Pagination(request=request, queryset=user_projects).get()
+        filter_data = self.filter(request)
+        user = filter_data.result.pop('user', '')
+
+        user_projects = self.queryset.filter(usertoproject__user__user=user, **filter_data.result)
+        admin_projects = self.queryset.filter(admin__user=user, **filter_data.result)
+        all_projects = user_projects.union(admin_projects).order_by(order_by(request))
+
+        result = Pagination(request=request, queryset=all_projects).get()
         result['results'] = self.serializer_class(result.get('results'), many=True).data
         return Response(result, status=status.HTTP_200_OK)
