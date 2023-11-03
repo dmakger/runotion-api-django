@@ -11,7 +11,7 @@ class Project(models.Model):
     name = models.CharField('Название', max_length=128)
     code = models.CharField('Код', max_length=128)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
-    image = models.ImageField('Изображение', upload_to='project/images/')
+    image = models.ImageField('Изображение', upload_to='project/images/', null=True, default=None, blank=True)
 
     class Meta:
         verbose_name = "Проект"

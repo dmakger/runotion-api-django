@@ -10,4 +10,6 @@ urlpatterns = [
 
     # Все проекты
     path("all/", ProjectView.as_view({'get': 'get_projects'})),
+    # Создание проекта
+    path("create/", ProjectView.as_view({'post': 'create_project'})),
 ]
