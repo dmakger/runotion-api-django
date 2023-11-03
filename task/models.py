@@ -98,7 +98,7 @@ class ChecklistTask(models.Model):
         verbose_name_plural = "Чеклисты у задачи"
 
     def __str__(self):
-        return f"{self.user.name.task} ===> {self.name}"
+        return f"{self.user.task.name} ===> {self.name}"
 
 
 # =============================
@@ -116,4 +116,4 @@ class SubtaskChecklist(models.Model):
         verbose_name_plural = "Подзадачи в чеклистах"
 
     def __str__(self):
-        return f"{self.checklist.name.task} ===> {self.name}"
+        return f"{self.checklist.user.task.name} ==> {self.checklist.name} ===> {self.name}"

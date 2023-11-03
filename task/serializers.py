@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from project.serializers import PreviewProjectSerializer
-from task.models import Task, UserToTask
+from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask
 from task.service import get_responsible_task, get_collaborator_task, get_observer_task
 from user.serializers import PreviewUserSerializer
 
@@ -51,7 +51,7 @@ class DetailTaskSerializer(serializers.ModelSerializer):
     def get_collaborators(instance):
         user_to_task = UserToTask.objects.filter(task=instance, position=get_collaborator_task())
         if len(user_to_task) == 0:
-            return None
+            return []
         users = [user.user for user in user_to_task]
         return PreviewUserSerializer(users, many=True).data
 
@@ -59,6 +59,41 @@ class DetailTaskSerializer(serializers.ModelSerializer):
     def get_observers(instance):
         user_to_task = UserToTask.objects.filter(task=instance, position=get_observer_task())
         if len(user_to_task) == 0:
-            return None
+            return []
         users = [user.user for user in user_to_task]
         return PreviewUserSerializer(users, many=True).data
+
+
+# ========================
+#   Подзадачи у чеклиста
+# ========================
+class SubtaskChecklistSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubtaskChecklist
+        fields = ['id', 'name', 'position', 'completed_at']
+
+
+# ========================
+#        Чеклисты
+# ========================
+class ChecklistTaskSerializer(serializers.ModelSerializer):
+    count_subtask = serializers.SerializerMethodField()
+    subtasks = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChecklistTask
+        fields = ['id', 'name', 'position', 'count_subtask', 'subtasks']
+
+    @staticmethod
+    def get_count_subtask(instance):
+        all_subtask = SubtaskChecklist.objects.filter(checklist=instance)
+        completed_subtask = all_subtask.filter(completed_at__isnull=False)
+        return {
+            'all': len(all_subtask),
+            'completed': len(completed_subtask),
+        }
+
+    @staticmethod
+    def get_subtasks(instance):
+        all_subtask = SubtaskChecklist.objects.filter(checklist=instance).order_by('completed_at', 'position')
+        return SubtaskChecklistSerializer(all_subtask, many=True).data

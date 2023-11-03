@@ -1,23 +1,15 @@
 from rest_framework import serializers
 
-from project.models import Project, UserToProject
-from project.service import get_admin_project
+from project.models import Project
 from user.serializers import PreviewUserSerializer
 
 
 class ProjectSerializer(serializers.ModelSerializer):
-    admin = serializers.SerializerMethodField()
+    admin = PreviewUserSerializer()
 
     class Meta:
         model = Project
         fields = ['id', 'name', 'admin', 'image']
-
-    @staticmethod
-    def get_admin(instance):
-        user_to_project = UserToProject.objects.filter(project=instance, role=get_admin_project())
-        if len(user_to_project) == 0:
-            return None
-        return PreviewUserSerializer(user_to_project[0].user).data
 
 
 class PreviewProjectSerializer(serializers.ModelSerializer):

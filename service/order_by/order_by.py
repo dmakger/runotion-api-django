@@ -1,3 +1,2 @@
-def order_by(request):
-    return request.query_params.get('ordering', '-created_at')
-
+def order_by(request, default: str = '-created_at'):
+    return request.query_params.get('ordering', default)

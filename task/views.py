@@ -3,12 +3,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from project.models import UserToProject
-from service.error.error_view import TaskError
+from service.error.error_view import TaskError, ChecklistError
 from service.filter.task import TaskFilter
 from service.order_by.order_by import order_by
-from task.models import Task
-from task.serializers import TaskSerializer, DetailTaskSerializer
 from service.pagination import Pagination
+from task.models import Task, ChecklistTask
+from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer
 
 
 # ============================
@@ -55,4 +55,24 @@ class DetailTaskView(viewsets.ModelViewSet):
             self.error.forbidden()
 
         result = self.serializer_class(task).data
+        return Response(result, status=status.HTTP_200_OK)
+
+
+# ==============================
+#       Чеклист у задачи
+# ==============================
+class ChecklistTaskView(viewsets.ModelViewSet):
+    serializer_class = ChecklistTaskSerializer
+    queryset = ChecklistTask.objects.all()
+    error = ChecklistError()
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(methods=['get'], detail=False)
+    def get_checklists(self, request, code):
+        checklists = self.queryset.filter(user__task__code=code, user__user__user=request.user)\
+            .order_by(order_by(request))
+        if len(checklists) == 0:
+            self.error.is_not_found()
+
+        result = self.serializer_class(checklists, many=True).data
         return Response(result, status=status.HTTP_200_OK)

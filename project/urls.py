@@ -9,5 +9,5 @@ urlpatterns = [
     path('', include(router.urls)),
 
     # Все проекты
-    path("all/", ProjectView.as_view({'get': 'get_my_projects'})),
+    path("all/", ProjectView.as_view({'get': 'get_projects'})),
 ]

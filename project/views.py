@@ -12,7 +12,6 @@ from service.pagination import Pagination
 # ============================
 #   Получение всех проектов
 # ============================
-
 class ProjectView(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
     queryset = Project.objects.all()
@@ -21,7 +20,7 @@ class ProjectView(viewsets.ModelViewSet):
 
 
     @action(methods=['get'], detail=False)
-    def get_my_projects(self, request):
+    def get_projects(self, request):
         filter_data = self.filter(request)
         user = filter_data.result.pop('user', '')
 
