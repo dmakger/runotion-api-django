@@ -2,18 +2,21 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from project.models import UserToProject
+from project.models import UserToProject, Project
 from service.error.error_view import TaskError, ChecklistError
 from service.filter.task import TaskFilter
 from service.order_by.order_by import order_by
 from service.pagination import Pagination
+from service.task import get_new_code_task_by_project
+from service.validator import Validator
 from task.models import Task, ChecklistTask
 from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer
-
-
 # ============================
 #   Получение всех задач
 # ============================
+from user.models import UserProfile
+
+
 class TaskView(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     queryset = Task.objects.all()
@@ -33,6 +36,24 @@ class TaskView(viewsets.ModelViewSet):
         result['results'] = self.serializer_class(result.get('results'), many=True).data
         return Response(result, status=status.HTTP_200_OK)
 
+    # Создание задачи
+    @action(methods=['post'], detail=False)
+    def create_task(self, request):
+        validator = Validator(request=request)
+        if not validator.has_content(['name']):
+            return self.error.is_not_content_form()
+        name = request.data['name']
+
+        current_user = UserProfile.objects.get(user=request.user)
+        projects = Project.objects.filter(admin=current_user)
+        if len(projects) == 0:
+            return self.error.is_not_found()
+
+        code = get_new_code_task_by_project(projects[0])
+        task = Task.objects.create(name=name, code=code, director=current_user, project=projects[0])
+        serializer = self.serializer_class(task)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 # ==============================
 #   Детальная страница задачи
@@ -43,9 +64,10 @@ class DetailTaskView(viewsets.ModelViewSet):
     error = TaskError()
     permission_classes = [permissions.IsAuthenticated]
 
+    # Получение данных о задаче
     @action(methods=['get'], detail=False)
-    def get_detail_task(self, request, code):
-        tasks = self.queryset.filter(code=code)
+    def get_detail_task(self, request, task_id):
+        tasks = self.queryset.filter(pk=task_id)
         if len(tasks) == 0:
             self.error.is_not_found()
 
@@ -68,8 +90,8 @@ class ChecklistTaskView(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     @action(methods=['get'], detail=False)
-    def get_checklists(self, request, code):
-        checklists = self.queryset.filter(user__task__code=code, user__user__user=request.user)\
+    def get_checklists(self, request, task_id):
+        checklists = self.queryset.filter(user__task__id=task_id, user__user__user=request.user) \
             .order_by(order_by(request))
         if len(checklists) == 0:
             self.error.is_not_found()
