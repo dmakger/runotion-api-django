@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from task.views import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView
+from task.views import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
+    SubtaskChecklistTaskView
 
 router = DefaultRouter()
 
@@ -20,5 +21,9 @@ urlpatterns = [
     path("<int:task_id>/checklist/", ChecklistTaskView.as_view({'get': 'get_checklists'})),
     path("<int:task_id>/checklist/create/", ChecklistTaskView.as_view({'post': 'create_checklist'})),
     path("<int:task_id>/checklist/<int:pk>/delete/", ChecklistTaskDeleteAPIView.as_view()),
+
+    # Подзадачи у чеклистов
+    path("checklist/<int:checklist_id>/subtask/", SubtaskChecklistTaskView.as_view({'get': 'get_subtasks_checklist'})),
+    path("checklist/<int:checklist_id>/subtask/create/", SubtaskChecklistTaskView.as_view({'post': 'create_subtask'})),
 
 ]

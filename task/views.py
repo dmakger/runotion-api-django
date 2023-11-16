@@ -4,14 +4,15 @@ from rest_framework.generics import DestroyAPIView
 from rest_framework.response import Response
 
 from project.models import UserToProject, Project
-from service.error.error_view import TaskError, ChecklistError
+from service.error.error_view import TaskError, ChecklistError, SubtaskChecklistError
 from service.filter.task import TaskFilter
 from service.order_by.order_by import order_by
 from service.pagination import Pagination
-from service.task import get_new_code_task_by_project, get_new_position_checklist_by_user_to_task
+from service.task import get_new_code_task_by_project, get_new_position_checklist_by_user_to_task, \
+    get_new_position_subtask_checklist_by_user_to_task
 from service.validator import Validator
-from task.models import Task, ChecklistTask, UserToTask
-from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer
+from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist
+from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer
 # ============================
 #   Получение всех задач
 # ============================
@@ -144,3 +145,41 @@ class ChecklistTaskDeleteAPIView(DestroyAPIView):
 
     def perform_destroy(self, instance):
         instance.delete()
+
+
+# ==============================
+#     Подзадачи у чеклистов
+# ==============================
+class SubtaskChecklistTaskView(viewsets.ModelViewSet):
+    serializer_class = SubtaskChecklistSerializer
+    queryset = SubtaskChecklist.objects.all()
+    error = SubtaskChecklistError()
+    permission_classes = [permissions.IsAuthenticated]
+
+    # Получение всех чеклистов по задаче
+    @action(methods=['get'], detail=False)
+    def get_subtasks_checklist(self, request, checklist_id):
+        subtasks = self.queryset.filter(checklist__id=checklist_id, checklist__user__user__user=request.user) \
+            .order_by(order_by(request))
+        if len(subtasks) == 0:
+            self.error.is_not_found()
+
+        result = self.serializer_class(subtasks, many=True).data
+        return Response(result, status=status.HTTP_200_OK)
+
+    # Создание подзадач у чеклистов
+    @action(methods=['post'], detail=False)
+    def create_subtask(self, request, checklist_id):
+        current_user = UserProfile.objects.get(user=request.user)
+        print(ChecklistTask.objects.filter(pk=checklist_id))
+        checklists = ChecklistTask.objects.filter(pk=checklist_id, user__user=current_user)
+        if len(checklists) == 0:
+            return self.error.is_not_found()
+
+        new_position = get_new_position_subtask_checklist_by_user_to_task(checklists[0])
+        name = request.data.get('name')
+        if name is None:
+            name = f'Подзадача {new_position}'
+        subtask = SubtaskChecklist.objects.create(checklist=checklists[0], name=name, position=new_position)
+        serializer = self.serializer_class(subtask)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
