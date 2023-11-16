@@ -171,7 +171,6 @@ class SubtaskChecklistTaskView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def create_subtask(self, request, checklist_id):
         current_user = UserProfile.objects.get(user=request.user)
-        print(ChecklistTask.objects.filter(pk=checklist_id))
         checklists = ChecklistTask.objects.filter(pk=checklist_id, user__user=current_user)
         if len(checklists) == 0:
             return self.error.is_not_found()
@@ -183,3 +182,15 @@ class SubtaskChecklistTaskView(viewsets.ModelViewSet):
         subtask = SubtaskChecklist.objects.create(checklist=checklists[0], name=name, position=new_position)
         serializer = self.serializer_class(subtask)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# ======================================
+#     Удаление подзадачи у чеклиста
+# ======================================
+class SubtaskChecklistTaskDeleteAPIView(DestroyAPIView):
+    queryset = SubtaskChecklist.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        instance.delete()
+
