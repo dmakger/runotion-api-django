@@ -1,5 +1,6 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
+from rest_framework.generics import DestroyAPIView
 from rest_framework.response import Response
 
 from project.models import Project
@@ -8,8 +9,6 @@ from service.error.error_view import ProjectError
 from service.filter.project import ProjectFilter
 from service.order_by.order_by import order_by
 from service.pagination import Pagination
-
-
 # ============================
 #   Получение всех проектов
 # ============================
@@ -55,3 +54,14 @@ class ProjectView(viewsets.ModelViewSet):
         project = Project.objects.create(name=name, code=code, admin=current_user)
         serializer = self.serializer_class(project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# ==============================
+#      Удаление таска
+# ==============================
+class ProjectDeleteAPIView(DestroyAPIView):
+    queryset = Project.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        instance.delete()
