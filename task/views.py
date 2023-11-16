@@ -1,5 +1,6 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
+from rest_framework.generics import DestroyAPIView
 from rest_framework.response import Response
 
 from project.models import UserToProject, Project
@@ -7,9 +8,9 @@ from service.error.error_view import TaskError, ChecklistError
 from service.filter.task import TaskFilter
 from service.order_by.order_by import order_by
 from service.pagination import Pagination
-from service.task import get_new_code_task_by_project
+from service.task import get_new_code_task_by_project, get_new_position_checklist_by_user_to_task
 from service.validator import Validator
-from task.models import Task, ChecklistTask
+from task.models import Task, ChecklistTask, UserToTask
 from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer
 # ============================
 #   Получение всех задач
@@ -21,6 +22,7 @@ class TaskView(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     queryset = Task.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+    error = TaskError()
     filter = TaskFilter
 
     @action(methods=['get'], detail=False)
@@ -40,12 +42,13 @@ class TaskView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def create_task(self, request):
         validator = Validator(request=request)
-        if not validator.has_content(['name']):
+        if not validator.has_content(['name', 'project_id']):
             return self.error.is_not_content_form()
         name = request.data['name']
+        project_id = request.data['project_id']
 
         current_user = UserProfile.objects.get(user=request.user)
-        projects = Project.objects.filter(admin=current_user)
+        projects = Project.objects.filter(pk=project_id)
         if len(projects) == 0:
             return self.error.is_not_found()
 
@@ -57,7 +60,7 @@ class TaskView(viewsets.ModelViewSet):
 
 # ==============================
 #   Детальная страница задачи
-# ==============================
+# ==============================-+
 class DetailTaskView(viewsets.ModelViewSet):
     serializer_class = DetailTaskSerializer
     queryset = Task.objects.all()
@@ -89,6 +92,7 @@ class ChecklistTaskView(viewsets.ModelViewSet):
     error = ChecklistError()
     permission_classes = [permissions.IsAuthenticated]
 
+    # Получение всех чеклистов по задаче
     @action(methods=['get'], detail=False)
     def get_checklists(self, request, task_id):
         checklists = self.queryset.filter(user__task__id=task_id, user__user__user=request.user) \
@@ -98,3 +102,32 @@ class ChecklistTaskView(viewsets.ModelViewSet):
 
         result = self.serializer_class(checklists, many=True).data
         return Response(result, status=status.HTTP_200_OK)
+
+    # Создание чеклиста
+    @action(methods=['post'], detail=False)
+    def create_checklist(self, request, task_id):
+        current_user = UserProfile.objects.get(user=request.user)
+        tasks = Task.objects.filter(pk=task_id)
+        if len(tasks) == 0:
+            return self.error.is_not_found()
+
+        user_to_tasks = UserToTask.objects.filter(user=current_user, task=tasks[0])
+        if len(user_to_tasks) == 0:
+            return self.error.is_not_found()
+
+        new_position = get_new_position_checklist_by_user_to_task(user_to_tasks[0])
+        name = request.data.get('name')
+        if name is None:
+            name = f'Чек-лист {new_position}'
+        checklist = ChecklistTask.objects.create(user=user_to_tasks[0], name=name, position=new_position)
+        serializer = self.serializer_class(checklist)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ChecklistTaskDeleteAPIView(DestroyAPIView):
+    queryset = ChecklistTask.objects.all()
+    serializer_class = ChecklistTaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        instance.delete()
