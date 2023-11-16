@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
-from rest_framework.generics import DestroyAPIView
+from rest_framework.generics import DestroyAPIView, UpdateAPIView
 from rest_framework.response import Response
 
 from project.models import UserToProject, Project
@@ -12,7 +12,8 @@ from service.task import get_new_code_task_by_project, get_new_position_checklis
     get_new_position_subtask_checklist_by_user_to_task
 from service.validator import Validator
 from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist
-from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer
+from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer, \
+    ChecklistTaskPreviewSerializer
 # ============================
 #   Получение всех задач
 # ============================
@@ -136,9 +137,30 @@ class ChecklistTaskView(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# ==============================
-#      Удаление чеклиста
-# ==============================
+#  Обновление данных у подзадачи чек-листа
+class ChecklistUpdateAPIView(UpdateAPIView):
+    queryset = ChecklistTask.objects.all()
+    serializer_class = ChecklistTaskPreviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        new_position = serializer.validated_data.get('position')
+
+        if new_position != instance.position:
+            user_to_task = instance.user
+            other_checklist = ChecklistTask.objects.filter(user=user_to_task, position__gte=new_position)
+
+            for checklist in other_checklist:
+                checklist.position += 1
+                checklist.save()
+
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+#  Удаление чеклиста
 class ChecklistTaskDeleteAPIView(DestroyAPIView):
     queryset = ChecklistTask.objects.all()
     permission_classes = [permissions.IsAuthenticated]
@@ -184,13 +206,33 @@ class SubtaskChecklistTaskView(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# ======================================
-#     Удаление подзадачи у чеклиста
-# ======================================
+#  Обновление данных у подзадачи чек-листа
+class SubtaskChecklistUpdateAPIView(UpdateAPIView):
+    queryset = SubtaskChecklist.objects.all()
+    serializer_class = SubtaskChecklistSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        new_position = serializer.validated_data.get('position')
+
+        if new_position != instance.position:
+            checklist = instance.checklist
+            other_subtasks = SubtaskChecklist.objects.filter(checklist=checklist, position__gte=new_position)
+
+            for subtask in other_subtasks:
+                subtask.position += 1
+                subtask.save()
+
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+#  Удаление подзадачи у чек-листа
 class SubtaskChecklistTaskDeleteAPIView(DestroyAPIView):
     queryset = SubtaskChecklist.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_destroy(self, instance):
         instance.delete()
-

@@ -95,5 +95,12 @@ class ChecklistTaskSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_subtasks(instance):
-        all_subtask = SubtaskChecklist.objects.filter(checklist=instance).order_by('completed_at', 'position')
+        all_subtask = SubtaskChecklist.objects.filter(checklist=instance).order_by('position', 'completed_at')
         return SubtaskChecklistSerializer(all_subtask, many=True).data
+
+
+#  Чек-лист основные данные
+class ChecklistTaskPreviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChecklistTask
+        fields = ['id', 'name', 'position']
