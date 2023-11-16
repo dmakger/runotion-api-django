@@ -84,6 +84,17 @@ class DetailTaskView(viewsets.ModelViewSet):
 
 
 # ==============================
+#      Удаление таска
+# ==============================
+class TaskDeleteAPIView(DestroyAPIView):
+    queryset = Task.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        instance.delete()
+
+
+# ==============================
 #       Чеклист у задачи
 # ==============================
 class ChecklistTaskView(viewsets.ModelViewSet):
@@ -124,9 +135,11 @@ class ChecklistTaskView(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+# ==============================
+#      Удаление чеклиста
+# ==============================
 class ChecklistTaskDeleteAPIView(DestroyAPIView):
     queryset = ChecklistTask.objects.all()
-    serializer_class = ChecklistTaskSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_destroy(self, instance):
