@@ -1,17 +1,11 @@
-from rest_framework import viewsets, permissions, status, generics
-from rest_framework.decorators import action
-from rest_framework.generics import DestroyAPIView, UpdateAPIView, ListAPIView
+from rest_framework import permissions, status, generics
+from rest_framework.generics import DestroyAPIView, UpdateAPIView
 from rest_framework.response import Response
 
 from project.models import Project, SectionProject
-from project.serializers import ProjectSerializer, PreviewProjectSerializer, ProjectUpdateSerializer, \
+from project.serializers import ProjectUpdateSerializer, \
     SectionProjectSerializer
 from service.error.error_view import ProjectError
-from service.filter.project import ProjectFilter
-from service.order_by.order_by import order_by
-from service.pagination import Pagination
-from service.validator import Validator
-from user.models import UserProfile
 
 
 # ==============================
@@ -25,7 +19,6 @@ class SectionProjectListView(generics.ListAPIView):
     def get_queryset(self):
         project_pk = self.kwargs['project_pk']
         return SectionProject.objects.filter(project__pk=project_pk).order_by('position')
-
 
 
 #  Обновление данных у подзадачи чек-листа

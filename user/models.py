@@ -4,14 +4,28 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
+# ====================
+#     Департамент
+# ====================
+class Department(models.Model):
+    name = models.CharField('Название', max_length=100)
+
+    class Meta:
+        verbose_name = "Департамент"
+        verbose_name_plural = "Департаменты"
+
+    def __str__(self):
+        return self.name
+
+
 # =============================
 #   Расширенные пользователи
 # =============================
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
-    department = models.CharField(max_length=100)
-    image = models.ImageField(upload_to='user/images/')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='Пользователь')
+    name = models.CharField('ФИО', max_length=100, null=True, blank=True, default=None)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, verbose_name='Департамент')
+    image = models.ImageField('Изображение', upload_to='user/images/', null=True, blank=True, default=None)
 
     class Meta:
         verbose_name = "Расширенный пользователь"
