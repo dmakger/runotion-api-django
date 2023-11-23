@@ -16,8 +16,6 @@ class Task(models.Model):
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     deadline = models.DateTimeField('Крайний срок', null=True, default=None, blank=True)
     completed_at = models.DateTimeField('Дата завершения', null=True, default=None, blank=True)
-    section_project = models.ForeignKey(SectionProject, on_delete=models.SET_NULL, verbose_name='Этап в проекте',
-                                        null=True, blank=True, default=None)
 
     class Meta:
         verbose_name = "Задача"
@@ -30,14 +28,32 @@ class Task(models.Model):
         created = self.pk is None
         super(Task, self).save(*args, **kwargs)
         if created:
-            responsible_task = UserPositionTask.objects.get(name='Ответственный')
+            responsible_task = UserLevelTask.objects.get(name='Ответственный')
             UserToTask.objects.create(user=self.director, task=self, position=responsible_task)
+
+
+# ========================
+#     Задачи к Секции
+# ========================
+class TaskToSection(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, verbose_name='Задача')
+    section_project = models.ForeignKey(SectionProject, on_delete=models.CASCADE, verbose_name='Этап в проекте',
+                                        null=True, blank=True, default=None)
+    created_at = models.DateTimeField('Дата добавления в секцию', auto_now_add=True)
+    position = models.IntegerField('Позиция')
+
+    class Meta:
+        verbose_name = "Задача к Секции"
+        verbose_name_plural = "Задачи к Секциям"
+
+    def __str__(self):
+        return f'{self.task} ==> _проект_ {self.section_project}'
 
 
 # ==========================================
 #     Должность пользователя в задачах
 # ==========================================
-class UserPositionTask(models.Model):
+class UserLevelTask(models.Model):
     name = models.CharField('Название', max_length=128)
     level = models.ForeignKey(ImportanceLevel, on_delete=models.CASCADE, verbose_name='Уровень')
 
@@ -55,8 +71,8 @@ class UserPositionTask(models.Model):
 class UserToTask(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Пользователь')
     task = models.ForeignKey(Task, on_delete=models.CASCADE, verbose_name='Задача')
-    position = models.ForeignKey(UserPositionTask, on_delete=models.CASCADE,
-                                 verbose_name='Должность пользователя в задачах')
+    level = models.ForeignKey(UserLevelTask, on_delete=models.CASCADE,
+                              verbose_name='Должность пользователя в задачах')
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:

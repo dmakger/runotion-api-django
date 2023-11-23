@@ -85,6 +85,17 @@ class DetailTaskView(viewsets.ModelViewSet):
         return Response(result, status=status.HTTP_200_OK)
 
 
+#  Обновление данных у задачи
+class TaskUpdateAPIView(UpdateAPIView):
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_update(self, serializer):
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 # ==============================
 #      Удаление таска
 # ==============================

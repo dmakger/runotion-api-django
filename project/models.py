@@ -1,4 +1,7 @@
 from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
 from core.models import ImportanceLevel
 from user.models import UserProfile
 
@@ -59,7 +62,7 @@ class UserToProject(models.Model):
 class SectionProject(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
     name = models.CharField('Название', max_length=128)
-    position = models.CharField('Позиция', max_length=128)
+    position = models.IntegerField('Позиция', default=None, null=True, blank=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:
@@ -88,10 +91,12 @@ class ActionProject(models.Model):
 #   История проекта
 # ======================
 class HistoryProject(models.Model):
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Пользователь', related_name='history_projects_created')
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Пользователь',
+                             related_name='history_projects_created')
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
     action = models.ForeignKey(ActionProject, on_delete=models.CASCADE, verbose_name='Активность')
-    victim = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Жертва', related_name='history_projects_affected')
+    victim = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Жертва',
+                               related_name='history_projects_affected')
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:

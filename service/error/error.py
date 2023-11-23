@@ -17,7 +17,7 @@ class ErrorHelper:
 
     @staticmethod
     def forbidden():
-        return ErrorHelper.get_error(error="У вас нет доступа", status=ErrorHelper.FORBIDDEN)
+        return ErrorHelper.get_error(error="У вас нет прав для выполнения этого действия", status=ErrorHelper.FORBIDDEN)
 
     @staticmethod
     def is_not_content_form(data=None):

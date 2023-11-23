@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from task.views import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
-    SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView
+    SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView, \
+    TaskUpdateAPIView
 
 router = DefaultRouter()
 
@@ -12,6 +13,7 @@ urlpatterns = [
     # Все задачи
     path("all/", TaskView.as_view({'get': 'get_tasks'})),
     path("create/", TaskView.as_view({'post': 'create_task'})),
+    path("<int:pk>/update/", TaskUpdateAPIView.as_view()),
 
     # Детальная страница задачи
     path("<int:task_id>/", DetailTaskView.as_view({'get': 'get_detail_task'})),
