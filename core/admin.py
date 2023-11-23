@@ -1,5 +1,11 @@
 from django.contrib import admin
+
 from core.models import ImportanceLevel
 
 
-admin.site.register(ImportanceLevel)
+#  Уровень важности
+class ImportanceLevelAdmin(admin.ModelAdmin):
+    list_display = ['name', 'value']
+
+
+admin.site.register(ImportanceLevel, ImportanceLevelAdmin)
