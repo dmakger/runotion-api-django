@@ -22,6 +22,7 @@ def get_new_position(qs, position):
 def fix_positions(qs):
     position = 1
     for item in qs:
-        item.position = position
-        item.save()
+        if item.position != position:
+            item.position = position
+            item.save(update_fields=['position'])
         position += 1

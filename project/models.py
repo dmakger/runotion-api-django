@@ -1,6 +1,9 @@
 from django.db import models
+from django.db.models.signals import post_save, pre_delete, post_delete
+from django.dispatch import receiver
 
 from core.models import ImportanceLevel
+from service.position import fix_positions, get_new_position
 from user.models import UserProfile
 
 
@@ -20,6 +23,14 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
+
+
+@receiver(post_save, sender=Project)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        SectionProject.objects.create(project=instance, name='Новые')
+        SectionProject.objects.create(project=instance, name='В процессе')
+        SectionProject.objects.create(project=instance, name='Выполненные')
 
 
 # ===================
@@ -69,6 +80,21 @@ class SectionProject(models.Model):
 
     def __str__(self):
         return f"{self.project.name} ===> {self.name}"
+
+
+@receiver(post_save, sender=SectionProject)
+def section_project_on_create_update(sender, instance, created, **kwargs):
+    if created:
+        sections = SectionProject.objects.filter(project=instance.project).order_by('position')
+        instance.position = get_new_position(sections, instance.position)
+        instance.save()
+        fix_positions(sections)
+
+
+@receiver(post_delete, sender=SectionProject)
+def section_project_on_delete(sender, instance, **kwargs):
+    sections = SectionProject.objects.filter(project=instance.project).order_by('position')
+    fix_positions(sections)
 
 
 # =========================
