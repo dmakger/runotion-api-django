@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from project.views.project import ProjectView, ProjectUpdateAPIView, ProjectDeleteAPIView
-from project.views.section import SectionProjectListView
+from project.views.section import SectionProjectListView, SectionProjectDeleteAPIView, SectionProjectUpdateAPIView
 
 router = DefaultRouter()
 
@@ -17,4 +17,6 @@ urlpatterns = [
 
     #  Секции по проектам
     path("<int:project_pk>/section/all/", SectionProjectListView.as_view()),
+    path("<int:project_pk>/section/<int:pk>/update/", SectionProjectUpdateAPIView.as_view()),
+    path("<int:project_pk>/section/<int:pk>/delete/", SectionProjectDeleteAPIView.as_view()),
 ]

@@ -85,16 +85,16 @@ class SectionProject(models.Model):
 @receiver(post_save, sender=SectionProject)
 def section_project_on_create_update(sender, instance, created, **kwargs):
     if created:
-        sections = SectionProject.objects.filter(project=instance.project).order_by('position')
-        instance.position = get_new_position(sections, instance.position)
+        qs = SectionProject.objects.filter(project=instance.project).order_by('position')
+        instance.position = get_new_position(qs, instance.position)
         instance.save()
-        fix_positions(sections)
+        fix_positions(qs)
 
 
 @receiver(post_delete, sender=SectionProject)
 def section_project_on_delete(sender, instance, **kwargs):
-    sections = SectionProject.objects.filter(project=instance.project).order_by('position')
-    fix_positions(sections)
+    qs = SectionProject.objects.filter(project=instance.project).order_by('position')
+    fix_positions(qs)
 
 
 # =========================

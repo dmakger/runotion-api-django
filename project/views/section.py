@@ -4,15 +4,17 @@ from rest_framework.response import Response
 
 from project.models import Project, SectionProject
 from project.serializers import ProjectUpdateSerializer, \
-    SectionProjectSerializer
-from service.error.error_view import ProjectError
-
+    SectionProjectSerializer, SectionProjectUpdateSerializer
+from service.error.error_view import ProjectError, SectionProjectError
 
 # ==============================
 #       СЕКЦИИ У ПРОЕКТОВ
 # ==============================
 
 # Получение всех секций
+from service.position import fix_positions
+
+
 class SectionProjectListView(generics.ListAPIView):
     serializer_class = SectionProjectSerializer
 
@@ -22,26 +24,35 @@ class SectionProjectListView(generics.ListAPIView):
 
 
 #  Обновление данных у подзадачи чек-листа
-class ProjectUpdateAPIView(UpdateAPIView):
-    queryset = Project.objects.all()
-    serializer_class = ProjectUpdateSerializer
+class SectionProjectUpdateAPIView(UpdateAPIView):
+    queryset = SectionProject.objects.all()
+    serializer_class = SectionProjectUpdateSerializer
     permission_classes = [permissions.IsAuthenticated]
-    error = ProjectError()
+    error = SectionProjectError()
 
     def perform_update(self, serializer):
         instance = serializer.instance
+        old_position = instance.position
 
         # Проверяем, что пользователь является админом
-        if self.request.user != instance.admin.user:
+        if self.request.user != instance.project.admin.user:
             return self.error.forbidden()
 
         serializer.save()
+
+        if old_position != instance.position:
+            qs = self.queryset.filter(project=instance.project).order_by('position')
+            # print(old_position, instance.position, qs.index(instance))
+            # print(instance, qs)
+            fix_positions(qs, instance, old_position)
+            # fix_positions(qs, instance, )
+
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-#  Удаление таска
-class ProjectDeleteAPIView(DestroyAPIView):
-    queryset = Project.objects.all()
+#  Удаление этапа у проекта
+class SectionProjectDeleteAPIView(DestroyAPIView):
+    queryset = SectionProject.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_destroy(self, instance):

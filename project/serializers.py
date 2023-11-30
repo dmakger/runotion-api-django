@@ -47,3 +47,19 @@ class SectionProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = SectionProject
         fields = ['id', 'name', 'position']
+
+
+class SectionProjectUpdateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(required=False)
+    position = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = SectionProject
+        fields = ['id', 'name', 'position']
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.position = validated_data.get('position', instance.position)
+
+        instance.save()
+        return instance
