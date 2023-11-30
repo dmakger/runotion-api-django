@@ -19,7 +19,7 @@ def get_new_position(qs, position):
 
 
 # Исправление всех позиций в qs
-def fix_positions(qs, obj, old_position):
+def fix_positions(qs):
     position = 1
     for item in qs:
         if item.position != position:

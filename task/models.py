@@ -32,7 +32,7 @@ class Task(models.Model):
         super(Task, self).save(*args, **kwargs)
         if created:
             responsible_task = UserLevelTask.objects.get(name='Ответственный')
-            UserToTask.objects.create(user=self.director, task=self, position=responsible_task)
+            UserToTask.objects.create(user=self.director, task=self, level=responsible_task)
 
 
 # ========================
