@@ -24,7 +24,7 @@ class Department(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='Пользователь')
     name = models.CharField('ФИО', max_length=100, null=True, blank=True, default=None)
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, verbose_name='Департамент')
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, verbose_name='Департамент', null=True, blank=True, default=None)
     image = models.ImageField('Изображение', upload_to='user/images/', null=True, blank=True, default=None)
 
     class Meta:
