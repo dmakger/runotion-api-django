@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-w^2!h51!s%q70@+_074o@4816htzhikt^w6mp!a9m_uss6udw1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "api.ru-notion.ru", "ru-notion.ru"]
 
 
 # Application definition
@@ -69,7 +69,24 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=2),
 }
 
-CORS_ORIGIN_WHITELIST = ["http://localhost:3000", "http://127.0.0.1:3000"]
+CORS_ORIGIN_WHITELIST = [
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://api.ru-notion.ru",
+    "https://api.ru-notion.ru",
+    "http://ru-notion.ru",
+    "https://ru-notion.ru",
+]
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://api.ru-notion.ru",
+    "https://api.ru-notion.ru",
+    "http://ru-notion.ru",
+    "https://ru-notion.ru",
+]
 # конец настроек JWT токена
 
 REST_FRAMEWORK = {
@@ -169,3 +186,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+X_FRAME_OPTIONS = "DENY"

@@ -20,7 +20,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_responsible(instance):
-        user_to_task = UserToTask.objects.filter(task=instance, position=get_responsible_task())
+        user_to_task = UserToTask.objects.filter(task=instance, level=get_responsible_task())
         if len(user_to_task) == 0:
             return None
         return PreviewUserSerializer(user_to_task[0].user).data
@@ -42,14 +42,14 @@ class DetailTaskSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_responsible(instance):
-        user_to_task = UserToTask.objects.filter(task=instance, position=get_responsible_task())
+        user_to_task = UserToTask.objects.filter(task=instance, level=get_responsible_task())
         if len(user_to_task) == 0:
             return None
         return PreviewUserSerializer(user_to_task[0].user).data
 
     @staticmethod
     def get_collaborators(instance):
-        user_to_task = UserToTask.objects.filter(task=instance, position=get_collaborator_task())
+        user_to_task = UserToTask.objects.filter(task=instance, level=get_collaborator_task())
         if len(user_to_task) == 0:
             return []
         users = [user.user for user in user_to_task]
@@ -57,7 +57,7 @@ class DetailTaskSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_observers(instance):
-        user_to_task = UserToTask.objects.filter(task=instance, position=get_observer_task())
+        user_to_task = UserToTask.objects.filter(task=instance, level=get_observer_task())
         if len(user_to_task) == 0:
             return []
         users = [user.user for user in user_to_task]
