@@ -77,20 +77,26 @@ class SubtaskChecklistSerializer(serializers.ModelSerializer):
 #        Чеклисты
 # ========================
 class ChecklistTaskSerializer(serializers.ModelSerializer):
-    count_subtask = serializers.SerializerMethodField()
+    infoCompletedSubtask = serializers.SerializerMethodField()
     subtasks = serializers.SerializerMethodField()
 
     class Meta:
         model = ChecklistTask
-        fields = ['id', 'name', 'position', 'count_subtask', 'subtasks']
+        fields = ['id', 'name', 'position', 'infoCompletedSubtask', 'subtasks']
 
     @staticmethod
-    def get_count_subtask(instance):
-        all_subtask = SubtaskChecklist.objects.filter(checklist=instance)
-        completed_subtask = all_subtask.filter(completed_at__isnull=False)
+    def get_infoCompletedSubtask(instance):
+        all_subtask = SubtaskChecklist.objects.filter(checklist=instance).order_by('position')
+        count_completed_subtask = 0
+        completed_subtask = []
+        for it in all_subtask:
+            is_none = it.completed_at is not None
+            completed_subtask.append(is_none)
+            count_completed_subtask += is_none
         return {
             'all': len(all_subtask),
-            'completed': len(completed_subtask),
+            'completed': count_completed_subtask,
+            'completedList': completed_subtask,
         }
 
     @staticmethod

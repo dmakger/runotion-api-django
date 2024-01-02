@@ -121,24 +121,33 @@ WSGI_APPLICATION = 'api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# SQLITE
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-# MySQL
 DATABASES = {
+
+    #  ==={ LOCAL. SQLITE }===
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # },
+
+    #  ==={ LOCAL. MYSQL }===
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'runotion',
+    #     'USER': 'root',
+    #     'PASSWORD': '11004326MySql',
+    #     'HOST': '127.0.0.1',
+    #     'PORT': '3306',
+    # },
+
+    #  ==={ GLOBAL. MYSQL }===
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'runotion',
-        'USER': 'root',
+        'NAME': 'dmakger_runotion',
+        'USER': 'dmakger_runotion',
         'PASSWORD': '11004326MySql',
-        'HOST': '127.0.0.1',
+        'HOST': 'dmakger.beget.tech',
         'PORT': '3306',
-    }
+    },
 }
 
 
