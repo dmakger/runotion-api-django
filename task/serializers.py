@@ -71,6 +71,9 @@ class SubtaskChecklistSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubtaskChecklist
         fields = ['id', 'name', 'position', 'completed_at']
+        extra_kwargs = {
+            'name': {'required': False},
+        }
 
 
 # ========================
@@ -110,3 +113,7 @@ class ChecklistTaskPreviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChecklistTask
         fields = ['id', 'name', 'position']
+        extra_kwargs = {
+            'name': {'required': False},
+        }
+

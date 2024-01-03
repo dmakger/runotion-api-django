@@ -157,8 +157,7 @@ class ChecklistUpdateAPIView(UpdateAPIView):
     def perform_update(self, serializer):
         instance = serializer.instance
         new_position = serializer.validated_data.get('position')
-
-        if new_position != instance.position:
+        if new_position is not None and new_position != instance.position:
             user_to_task = instance.user
             other_checklist = ChecklistTask.objects.filter(user=user_to_task, position__gte=new_position)
 
@@ -167,7 +166,6 @@ class ChecklistUpdateAPIView(UpdateAPIView):
                 checklist.save()
 
         serializer.save()
-
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
