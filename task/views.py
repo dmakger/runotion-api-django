@@ -225,7 +225,7 @@ class SubtaskChecklistUpdateAPIView(UpdateAPIView):
         instance = serializer.instance
         new_position = serializer.validated_data.get('position')
 
-        if new_position != instance.position:
+        if new_position is not None and new_position != instance.position:
             checklist = instance.checklist
             other_subtasks = SubtaskChecklist.objects.filter(checklist=checklist, position__gte=new_position)
 
@@ -245,3 +245,4 @@ class SubtaskChecklistTaskDeleteAPIView(DestroyAPIView):
 
     def perform_destroy(self, instance):
         instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
