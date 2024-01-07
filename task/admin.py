@@ -22,7 +22,7 @@ class TaskToSectionAdmin(admin.ModelAdmin):
 
 #  Задачи к Секции
 class UserLevelTaskAdmin(admin.ModelAdmin):
-    list_display = ['name', 'level']
+    list_display = ['name', 'id', 'level']
 
 
 #  Задачи к Секции
