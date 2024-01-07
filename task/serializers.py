@@ -38,7 +38,7 @@ class DetailTaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id', 'name', 'code', 'deadline', 'director', 'responsible', 'collaborators', 'observers', 'project']
+        fields = '__all__'
 
     @staticmethod
     def get_responsible(instance):

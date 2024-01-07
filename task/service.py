@@ -6,11 +6,11 @@ def get_director_task():
 
 
 def get_responsible_task():
-    return UserLevelTask.objects.get(id=2)
+    return UserLevelTask.objects.get(id=3)
 
 
 def get_collaborator_task():
-    return UserLevelTask.objects.get(id=3)
+    return UserLevelTask.objects.get(id=2)
 
 
 def get_observer_task():

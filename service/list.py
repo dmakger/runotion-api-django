@@ -33,7 +33,6 @@ def get_records_from_queryset(queryset: QuerySet, filter_data=None, default=None
     return default
 
 
-
 # Получение родительского queryset
 def get_parents_records(queryset: QuerySet, model, data: list) -> QuerySet:
     unique_ids = queryset.values_list(*data, flat=True).distinct()
