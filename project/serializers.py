@@ -1,8 +1,21 @@
 from rest_framework import serializers
 
-from project.models import Project, SectionProject
+from core.serializers import ImportanceLevelSerializer
+from project.models import Project, SectionProject, UserToProject, RoleProject
 from user.models import UserProfile
 from user.serializers import PreviewUserSerializer
+
+
+# =====================
+#    РОЛИ В ПРОЕКТАХ
+# =====================
+
+class RoleProjectSerializer(serializers.ModelSerializer):
+    level = ImportanceLevelSerializer()
+
+    class Meta:
+        model = RoleProject
+        fields = '__all__'
 
 
 # ====================
@@ -15,6 +28,24 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['id', 'name', 'code', 'admin', 'image']
+
+
+class ProjectWithRoleSerializer(serializers.ModelSerializer):
+    admin = PreviewUserSerializer()
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = ['id', 'name', 'code', 'admin', 'image', 'role']
+
+    def get_role(self, instance):
+        user = self.context.get('user')
+        if user is None:
+            return
+        qs = UserToProject.objects.filter(user=user, project=instance)
+        if len(qs) == 0:
+            return
+        return RoleProjectSerializer(qs[0].role).data
 
 
 class PreviewProjectSerializer(serializers.ModelSerializer):

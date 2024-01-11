@@ -4,7 +4,8 @@ from rest_framework.generics import DestroyAPIView, UpdateAPIView
 from rest_framework.response import Response
 
 from project.models import Project
-from project.serializers import ProjectSerializer, PreviewProjectSerializer, ProjectUpdateSerializer
+from project.serializers import ProjectSerializer, PreviewProjectSerializer, ProjectUpdateSerializer, \
+    ProjectWithRoleSerializer
 from service.error.error_view import ProjectError
 from service.filter.project import ProjectFilter
 from service.order_by.order_by import order_by
@@ -32,9 +33,10 @@ class ProjectView(viewsets.ModelViewSet):
         user_projects = self.queryset.filter(usertoproject__user__user=user, **filter_data.result)
         admin_projects = self.queryset.filter(admin__user=user, **filter_data.result)
         all_projects = user_projects.union(admin_projects).order_by(order_by(request))
+        print(user)
 
         result = Pagination(request=request, queryset=all_projects).get()
-        result['results'] = self.serializer_class(result.get('results'), many=True).data
+        result['results'] = ProjectWithRoleSerializer(result.get('results'), context={'user': user}, many=True).data
         return Response(result, status=status.HTTP_200_OK)
 
     # Создание проекта
