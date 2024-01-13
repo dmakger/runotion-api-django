@@ -33,7 +33,6 @@ class ProjectView(viewsets.ModelViewSet):
         user_projects = self.queryset.filter(usertoproject__user__user=user, **filter_data.result)
         admin_projects = self.queryset.filter(admin__user=user, **filter_data.result)
         all_projects = user_projects.union(admin_projects).order_by(order_by(request))
-        print(user)
 
         result = Pagination(request=request, queryset=all_projects).get()
         result['results'] = ProjectWithRoleSerializer(result.get('results'), context={'user': user}, many=True).data

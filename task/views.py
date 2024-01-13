@@ -27,7 +27,7 @@ class TaskView(viewsets.ModelViewSet):
     error = TaskError()
     filter = TaskFilter
 
-    @action(methods=['get'], detail=False)
+    @action(methods=['post'], detail=False)
     def get_tasks(self, request):
         filter_data = self.filter(request)
         user = filter_data.result.pop('user')

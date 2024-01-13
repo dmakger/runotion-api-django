@@ -11,7 +11,7 @@ urlpatterns = [
     path('', include(router.urls)),
 
     # Все задачи
-    path("all/", TaskView.as_view({'get': 'get_tasks'})),
+    path("all/", TaskView.as_view({'post': 'get_tasks'})),
     path("create/", TaskView.as_view({'post': 'create_task'})),
     path("<int:pk>/update/", TaskUpdateAPIView.as_view()),
 

@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from core.serializers import ImportanceLevelSerializer
 from project.models import Project, SectionProject, UserToProject, RoleProject
+from project.service import get_admin_project
 from user.models import UserProfile
 from user.serializers import PreviewUserSerializer
 
@@ -42,9 +43,12 @@ class ProjectWithRoleSerializer(serializers.ModelSerializer):
         user = self.context.get('user')
         if user is None:
             return
-        qs = UserToProject.objects.filter(user=user, project=instance)
+
+        qs = UserToProject.objects.filter(user__user=user, project=instance)
         if len(qs) == 0:
-            return
+            if instance.admin.user != user:
+                return
+            return RoleProjectSerializer(get_admin_project()).data
         return RoleProjectSerializer(qs[0].role).data
 
 
