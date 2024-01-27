@@ -11,6 +11,7 @@ urlpatterns = [
 
     #  Проекты
     path("all/", ProjectView.as_view({'get': 'get_projects'})),
+    path("detail/<int:pk>/", ProjectView.as_view({'get': 'get_project_by_id'})),
     path("create/", ProjectView.as_view({'post': 'create_project'})),
     path("<int:pk>/update/", ProjectUpdateAPIView.as_view()),
     path("<int:pk>/delete/", ProjectDeleteAPIView.as_view()),

@@ -1,10 +1,11 @@
+from django.http import Http404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.generics import DestroyAPIView, UpdateAPIView
 from rest_framework.response import Response
 
 from project.models import Project
-from project.serializers import ProjectSerializer, PreviewProjectSerializer, ProjectUpdateSerializer, \
+from project.serializers import ProjectSerializer, ProjectUpdateSerializer, \
     ProjectWithRoleSerializer
 from service.error.error_view import ProjectError
 from service.filter.project import ProjectFilter
@@ -37,6 +38,16 @@ class ProjectView(viewsets.ModelViewSet):
         result = Pagination(request=request, queryset=all_projects).get()
         result['results'] = ProjectWithRoleSerializer(result.get('results'), context={'user': user}, many=True).data
         return Response(result, status=status.HTTP_200_OK)
+
+    # Получение проекта по id
+    @action(methods=['get'], detail=True)
+    def get_project_by_id(self, request, pk=None):
+        try:
+            project = self.get_object()  # Получение объекта проекта по 'pk'
+            serializer = self.get_serializer(project)
+            return Response(serializer.data)
+        except Http404:
+            return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
     # Создание проекта
     @action(methods=['post'], detail=False)

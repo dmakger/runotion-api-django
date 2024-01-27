@@ -27,7 +27,13 @@ def creation_key(key=None, digits: list = None, is_equal=False):
     return f"{key}{equal}{digits[0]}"
 
 
-
+def get_all_keys():
+    return {
+        DifferenceKeys.WITHOUT: 0,
+        creation_key(DifferenceKeys.LESS, [10]): 0,
+        creation_key(DifferenceKeys.BETWEEN, [10, 20]): 0,
+        creation_key(DifferenceKeys.LARGE, [20]): 0,
+    }
 
 
 def calculate_days(completed_at=None, deadline_at=None):
