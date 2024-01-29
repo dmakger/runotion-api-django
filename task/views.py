@@ -14,12 +14,12 @@ from service.validator import Validator
 from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist
 from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer, \
     ChecklistTaskPreviewSerializer
-# ============================
-#   Получение всех задач
-# ============================
 from user.models import UserProfile
 
 
+# ============================
+#   Получение всех задач
+# ============================
 class TaskView(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     queryset = Task.objects.all()
@@ -44,9 +44,10 @@ class TaskView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def create_task(self, request):
         validator = Validator(request=request)
-        if not validator.has_content(['name', 'project_id']):
+        print(request.data)
+        if not validator.has_content(['project_id']):
             return self.error.is_not_content_form()
-        name = request.data['name']
+        name = request.data.get('name', 'Новая задача')
         project_id = request.data['project_id']
 
         current_user = UserProfile.objects.get(user=request.user)
