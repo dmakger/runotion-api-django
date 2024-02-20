@@ -3,6 +3,8 @@ from rest_framework import serializers
 from core.serializers import ImportanceLevelSerializer
 from project.models import Project, SectionProject, UserToProject, RoleProject
 from project.service import get_admin_project
+from task.models import TaskToSection, Task, UserToTask
+from task.service import get_responsible_task
 from user.models import UserProfile
 from user.serializers import PreviewUserSerializer
 
@@ -82,6 +84,45 @@ class SectionProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = SectionProject
         fields = ['id', 'name', 'position']
+
+
+# ========================
+#    Задача в списке
+# ========================
+class TaskForSectionProjectSerializer(serializers.ModelSerializer):
+    director = PreviewUserSerializer()
+    responsible = serializers.SerializerMethodField()
+    project = PreviewProjectSerializer()
+
+    class Meta:
+        model = Task
+        fields = ['id', 'name', 'code', 'deadline', 'director', 'responsible', 'project']
+
+    @staticmethod
+    def get_responsible(instance):
+        user_to_task = UserToTask.objects.filter(task=instance, level=get_responsible_task())
+        if len(user_to_task) == 0:
+            return None
+        return PreviewUserSerializer(user_to_task[0].user).data
+
+
+
+
+class SectionProjectWithTaskSerializer(serializers.ModelSerializer):
+    body = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SectionProject
+        fields = '__all__'
+
+    def get_body(self, instance):
+        tasksToSection = TaskToSection.objects.filter(section_project=instance)
+        tasks = []
+        for task in tasksToSection:
+            tasks.append(task.task)
+        serializer = TaskForSectionProjectSerializer(data=tasks, many=True)
+        serializer.is_valid()
+        return serializer.data
 
 
 class SectionProjectUpdateSerializer(serializers.ModelSerializer):

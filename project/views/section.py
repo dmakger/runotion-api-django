@@ -1,26 +1,50 @@
 from rest_framework import permissions, status, generics
-from rest_framework.generics import DestroyAPIView, UpdateAPIView
+from rest_framework.generics import DestroyAPIView, UpdateAPIView, CreateAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from project.models import Project, SectionProject
 from project.serializers import ProjectUpdateSerializer, \
-    SectionProjectSerializer, SectionProjectUpdateSerializer
+    SectionProjectSerializer, SectionProjectUpdateSerializer, SectionProjectWithTaskSerializer
 from service.error.error_view import ProjectError, SectionProjectError
+
+from service.position import fix_positions
+
 
 # ==============================
 #       СЕКЦИИ У ПРОЕКТОВ
 # ==============================
 
+
 # Получение всех секций
-from service.position import fix_positions
-
-
 class SectionProjectListView(generics.ListAPIView):
-    serializer_class = SectionProjectSerializer
+    serializer_class = SectionProjectWithTaskSerializer
 
     def get_queryset(self):
         project_pk = self.kwargs['project_pk']
         return SectionProject.objects.filter(project__pk=project_pk).order_by('position')
+
+
+# Создание секций
+class SectionProjectCreateAPIView(CreateAPIView):
+    queryset = SectionProject.objects.all()
+    serializer_class = SectionProjectSerializer
+    permission_classes = [IsAuthenticated]
+    error = SectionProjectError()
+
+    def perform_create(self, serializer):
+        project_id = self.kwargs.get('project_pk')
+        project = Project.objects.get(id=project_id)
+
+        # Проверяем, что пользователь является админом проекта
+        if self.request.user != project.admin.user:
+            return self.error.forbidden()
+
+        serializer.save(project=project)
+        qs = self.queryset.filter(project=project).order_by('position', 'created_at')
+        fix_positions(qs)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 #  Обновление данных у подзадачи чек-листа
@@ -42,10 +66,7 @@ class SectionProjectUpdateAPIView(UpdateAPIView):
 
         if old_position != instance.position:
             qs = self.queryset.filter(project=instance.project).order_by('position')
-            # print(old_position, instance.position, qs.index(instance))
-            # print(instance, qs)
             fix_positions(qs, instance, old_position)
-            # fix_positions(qs, instance, )
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 

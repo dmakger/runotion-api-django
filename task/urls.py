@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from task.views import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
+from task.views.section import SectionProjectDetailAPIView
+from task.views.task import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
     SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView, \
     TaskUpdateAPIView
 
@@ -14,6 +15,9 @@ urlpatterns = [
     path("all/", TaskView.as_view({'post': 'get_tasks'})),
     path("create/", TaskView.as_view({'post': 'create_task'})),
     path("<int:pk>/update/", TaskUpdateAPIView.as_view()),
+
+    # Задачи по секциям
+    path("section/<int:section_id>/", SectionProjectDetailAPIView.as_view()),
 
     # Детальная страница задачи
     path("<int:task_id>/", DetailTaskView.as_view({'get': 'get_detail_task'})),
