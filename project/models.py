@@ -2,7 +2,8 @@ from django.db import models
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from core.models import ImportanceLevel
+from core.models import ImportanceLevel, Color
+from core.service import get_color
 from service.position import fix_positions, get_new_position
 from user.models import UserProfile
 
@@ -72,6 +73,7 @@ class SectionProject(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
     name = models.CharField('Название', max_length=128)
     position = models.IntegerField('Позиция', default=None, null=True, blank=True)
+    color = models.ForeignKey(Color, on_delete=models.CASCADE, verbose_name='Цвет', default=None, null=True, blank=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:
@@ -87,6 +89,7 @@ def section_project_on_create_update(sender, instance, created, **kwargs):
     if created:
         qs = SectionProject.objects.filter(project=instance.project).order_by('position')
         instance.position = get_new_position(qs, instance.position)
+        instance.color = get_color(qs.count()-1)
         instance.save()
         fix_positions(qs)
 

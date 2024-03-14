@@ -18,8 +18,6 @@ urlpatterns = [
 
     # Задачи по секциям
     path("section/<int:pk>/", SectionProjectDetailAPIView.as_view()),
-# project/1/task/task/section-project/40/task/19/update/
-    # path('project/<int:project_id>/task/section-project/<int:section_project_id>/task/<int:task_id>/update/', UpdateTaskSectionProject.as_view(),
     path('section-project/<int:section_project_id>/task/<int:task_id>/update/', UpdateTaskSectionProject.as_view(),
          name='update_task_section_project'),
 

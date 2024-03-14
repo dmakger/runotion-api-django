@@ -1,10 +1,11 @@
+from django.db.models import Count
 from django.http import Http404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.generics import DestroyAPIView, UpdateAPIView
 from rest_framework.response import Response
 
-from project.models import Project
+from project.models import Project, SectionProject
 from project.serializers import ProjectSerializer, ProjectUpdateSerializer, \
     ProjectWithRoleSerializer
 from service.error.error_view import ProjectError

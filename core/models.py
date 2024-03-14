@@ -14,3 +14,18 @@ class ImportanceLevel(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# ==========================
+#          COLORS
+# ==========================
+class Color(models.Model):
+    name = models.CharField('Название', max_length=64)
+    value = models.CharField('HEX', max_length=32)
+
+    class Meta:
+        verbose_name = "Цвет"
+        verbose_name_plural = "Цвета"
+
+    def __str__(self):
+        return self.name

@@ -21,7 +21,7 @@ class UserToProjectAdmin(admin.ModelAdmin):
 
 #  Этапы в проекте (Канбан)
 class SectionProjectAdmin(admin.ModelAdmin):
-    list_display = ['project', 'name', 'position', 'created_at']
+    list_display = ['project', 'name', 'position', 'color', 'created_at']
 
     def save_model(self, request, obj, form, change):
         sections = SectionProject.objects.filter(project=obj.project).order_by('position')

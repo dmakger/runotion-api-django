@@ -30,12 +30,15 @@ class UpdateTaskSectionProject(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request, *args, **kwargs):
-        section_project_id = get_object_or_404(SectionProject, pk=self.kwargs.get('section_project_id'))
+        new_section_project = get_object_or_404(SectionProject, pk=self.kwargs.get('section_project_id'))
         task_to_section = get_object_or_404(TaskToSection, task__pk=self.kwargs.get('task_id'))
 
-        task_to_section.section_project_id = section_project_id
+        old_section_project = task_to_section.section_project
+        task_to_section.section_project = new_section_project
         task_to_section.save()
 
-        serializer = TaskSerializer(task_to_section.task)
-        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+        return JsonResponse({
+            "new_section_id": task_to_section.section_project.id,
+            "old_section_id": old_section_project.id,
+        }, status=status.HTTP_200_OK)
 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.serializers import ImportanceLevelSerializer
+from core.serializers import ImportanceLevelSerializer, ColorSerializer
 from project.models import Project, SectionProject, UserToProject, RoleProject
 from project.service import get_admin_project
 from task.models import TaskToSection, Task, UserToTask
@@ -106,10 +106,9 @@ class TaskForSectionProjectSerializer(serializers.ModelSerializer):
         return PreviewUserSerializer(user_to_task[0].user).data
 
 
-
-
 class SectionProjectWithTaskSerializer(serializers.ModelSerializer):
     body = serializers.SerializerMethodField()
+    color = ColorSerializer()
 
     class Meta:
         model = SectionProject
