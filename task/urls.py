@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from task.views.section import SectionProjectDetailAPIView, UpdateTaskSectionProject
+from task.views.section import SectionProjectDetailAPIView, UpdateTaskSectionProject, AddTaskToSectionProject
 from task.views.task import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
     SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView, \
     TaskUpdateAPIView
@@ -17,6 +17,7 @@ urlpatterns = [
     path("<int:pk>/update/", TaskUpdateAPIView.as_view()),
 
     # Задачи по секциям
+    path("<int:task_id>/add/section/<int:section_project_id>/", AddTaskToSectionProject.as_view()),
     path("section/<int:pk>/", SectionProjectDetailAPIView.as_view()),
     path('section-project/<int:section_project_id>/task/<int:task_id>/update/', UpdateTaskSectionProject.as_view(),
          name='update_task_section_project'),

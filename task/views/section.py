@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from project.models import SectionProject
 from project.serializers import SectionProjectSerializer, TaskForSectionProjectSerializer
 from task.models import TaskToSection, Task
-from task.serializers import TaskSerializer
+from task.serializers import TaskSerializer, TaskToSectionSerializer
 
 
 class SectionProjectDetailAPIView(RetrieveAPIView):
@@ -42,3 +42,18 @@ class UpdateTaskSectionProject(APIView):
             "old_section_id": old_section_project.id,
         }, status=status.HTTP_200_OK)
 
+
+class AddTaskToSectionProject(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        section_project = get_object_or_404(SectionProject, pk=self.kwargs.get('section_project_id'))
+        task = get_object_or_404(Task, pk=self.kwargs.get('task_id'))
+
+        if TaskToSection.objects.exists(task=task):
+            return JsonResponse({'is_exists': True}, status=status.HTTP_302_FOUND)
+
+        task_to_section = TaskToSection.objects.create(task=task, section_project=section_project)
+        task_to_section.save()
+
+        return JsonResponse(TaskToSectionSerializer(task_to_section).data, status=status.HTTP_200_OK)

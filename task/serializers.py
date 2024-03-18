@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from project.serializers import PreviewProjectSerializer
-from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask
+from project.serializers import PreviewProjectSerializer, SectionProjectSerializer
+from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection
 from task.service import get_responsible_task, get_collaborator_task, get_observer_task
 from user.serializers import PreviewUserSerializer
 
@@ -117,3 +117,11 @@ class ChecklistTaskPreviewSerializer(serializers.ModelSerializer):
             'name': {'required': False},
         }
 
+
+class TaskToSectionSerializer(serializers.ModelSerializer):
+    task = TaskSerializer()
+    section_project = SectionProjectSerializer()
+
+    class Meta:
+        model = TaskToSection
+        fields = '__all__'
