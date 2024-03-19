@@ -1,9 +1,10 @@
+from django.db.models import Subquery, OuterRef
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
-from rest_framework.generics import DestroyAPIView, UpdateAPIView
+from rest_framework.generics import DestroyAPIView, UpdateAPIView, get_object_or_404
 from rest_framework.response import Response
 
-from project.models import UserToProject, Project
+from project.models import UserToProject, Project, SectionProject
 from service.error.error_view import TaskError, ChecklistError, SubtaskChecklistError
 from service.filter.task import TaskFilter
 from service.order_by.order_by import order_by
@@ -11,7 +12,7 @@ from service.pagination import Pagination
 from service.task import get_new_code_task_by_project, get_new_position_checklist_by_user_to_task, \
     get_new_position_subtask_checklist_by_user_to_task
 from service.validator import Validator
-from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist
+from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist, TaskToSection
 from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer, \
     ChecklistTaskPreviewSerializer
 from user.models import UserProfile
@@ -34,6 +35,15 @@ class TaskView(viewsets.ModelViewSet):
 
         user_tasks = self.queryset.filter(usertotask__user__user=user, **filter_data.result)
         director_tasks = Task.objects.filter(director__user=user, **filter_data.result)
+
+        if not request.data.get('has_section', True):
+            user_tasks = user_tasks.exclude(
+                id__in=Subquery(TaskToSection.objects.filter(task_id=OuterRef('pk')).values('task_id'))
+            )
+            director_tasks = director_tasks.exclude(
+                id__in=Subquery(TaskToSection.objects.filter(task_id=OuterRef('pk')).values('task_id'))
+            )
+
         all_tasks = user_tasks.union(director_tasks).order_by(order_by(request))
 
         result = Pagination(request=request, queryset=all_tasks).get()
@@ -44,7 +54,6 @@ class TaskView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def create_task(self, request):
         validator = Validator(request=request)
-        print(request.data)
         if not validator.has_content(['project_id']):
             return self.error.is_not_content_form()
         name = request.data.get('name', 'Новая задача')
@@ -57,6 +66,13 @@ class TaskView(viewsets.ModelViewSet):
 
         code = get_new_code_task_by_project(projects[0])
         task = Task.objects.create(name=name, code=code, director=current_user, project=projects[0])
+
+        if request.data.get('section_id') is not None:
+            section_id = request.data.get('section_id')
+            section = get_object_or_404(SectionProject, pk=section_id)
+            task_to_section = TaskToSection.objects.create(task=task, section_project=section)
+            task_to_section.save()
+
         serializer = self.serializer_class(task)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

@@ -50,7 +50,7 @@ class AddTaskToSectionProject(APIView):
         section_project = get_object_or_404(SectionProject, pk=self.kwargs.get('section_project_id'))
         task = get_object_or_404(Task, pk=self.kwargs.get('task_id'))
 
-        if TaskToSection.objects.exists(task=task):
+        if TaskToSection.objects.filter(task=task).exists():
             return JsonResponse({'is_exists': True}, status=status.HTTP_302_FOUND)
 
         task_to_section = TaskToSection.objects.create(task=task, section_project=section_project)
