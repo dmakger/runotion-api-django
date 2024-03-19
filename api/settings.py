@@ -28,6 +28,7 @@ SECRET_KEY = 'django-insecure-w^2!h51!s%q70@+_074o@4816htzhikt^w6mp!a9m_uss6udw1
 DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "api.ru-notion.ru", "ru-notion.ru"]
+ALLOWED_HOSTS = '*'
 
 
 # Application definition
@@ -121,33 +122,24 @@ WSGI_APPLICATION = 'api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# SQLITE
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+# MySQL
 DATABASES = {
-
-    #  ==={ LOCAL. SQLITE }===
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # },
-
-    #  ==={ LOCAL. MYSQL }===
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.mysql',
-    #     'NAME': 'runotion',
-    #     'USER': 'root',
-    #     'PASSWORD': '11004326MySql',
-    #     'HOST': '127.0.0.1',
-    #     'PORT': '3306',
-    # },
-
-    #  ==={ GLOBAL. MYSQL }===
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'dmakger_runotion',
         'USER': 'dmakger_runotion',
         'PASSWORD': '11004326MySql',
-        'HOST': 'dmakger.beget.tech',
+        'HOST': 'localhost',
         'PORT': '3306',
-    },
+    }
 }
 
 
@@ -195,6 +187,3 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-X_FRAME_OPTIONS = "DENY"
