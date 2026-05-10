@@ -1,7 +1,4 @@
-from django.db import models
-from django.db.models import Count, Case, When
 from django.db.models import QuerySet
-from django.db.models.functions import ExtractYear
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -70,12 +67,10 @@ class TaskToPerformersChartView(viewsets.ModelViewSet):
         for task in tasks:
             username = task.director.name
             data[username] = data.get(username, 0) + 1
-        user_to_tasks_queries = [UserToTask.objects.filter(task=task) for task in tasks]
+        user_to_tasks = UserToTask.objects.filter(task__in=tasks)
 
-        # Объединяем результаты в один QuerySet
-        user_to_tasks = user_to_tasks_queries[0].union(*user_to_tasks_queries[1:])
-        for task in user_to_tasks:
-            username = task.user.name
+        for user_to_task in user_to_tasks:
+            username = user_to_task.user.name
             data[username] = data.get(username, 0) + 1
         return data
 

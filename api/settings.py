@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
+from .config import Config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,7 +30,6 @@ SECRET_KEY = 'django-insecure-w^2!h51!s%q70@+_074o@4816htzhikt^w6mp!a9m_uss6udw1
 DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "api.ru-notion.ru", "ru-notion.ru"]
-ALLOWED_HOSTS = '*'
 
 
 # Application definition
@@ -53,8 +54,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -70,14 +71,6 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=2),
 }
 
-CORS_ORIGIN_WHITELIST = [
-    "http://localhost",
-    "http://127.0.0.1",
-    "http://api.ru-notion.ru",
-    "https://api.ru-notion.ru",
-    "http://ru-notion.ru",
-    "https://ru-notion.ru",
-]
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
@@ -133,12 +126,12 @@ WSGI_APPLICATION = 'api.wsgi.application'
 # MySQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'dmakger_runotion',
-        'USER': 'dmakger_runotion',
-        'PASSWORD': '11004326MySql',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'ENGINE': Config.DB_ENGINE,
+        'NAME': Config.DB_NAME,
+        'USER': Config.DB_USER,
+        'PASSWORD': Config.DB_PASSWORD,
+        'HOST': Config.DB_HOST,
+        'PORT': Config.DB_PORT,
     }
 }
 

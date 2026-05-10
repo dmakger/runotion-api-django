@@ -1,4 +1,4 @@
-import datetime
+from django.utils import timezone
 
 
 class DifferenceKeys:
@@ -40,7 +40,7 @@ def calculate_days(completed_at=None, deadline_at=None):
     if completed_at is None:
         return DifferenceKeys.WITHOUT
     if deadline_at is None:
-        deadline_at = datetime.datetime.now()
+        deadline_at = timezone.now()
     difference = completed_at - deadline_at
     days_difference = difference.days
 

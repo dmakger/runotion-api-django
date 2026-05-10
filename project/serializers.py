@@ -47,11 +47,12 @@ class ProjectWithRoleSerializer(serializers.ModelSerializer):
             return
 
         qs = UserToProject.objects.filter(user__user=user, project=instance)
-        if len(qs) == 0:
+        user_to_project = qs.first()
+        if user_to_project is None:
             if instance.admin.user != user:
                 return
             return RoleProjectSerializer(get_admin_project()).data
-        return RoleProjectSerializer(qs[0].role).data
+        return RoleProjectSerializer(user_to_project.role).data
 
 
 class PreviewProjectSerializer(serializers.ModelSerializer):
@@ -78,6 +79,18 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
 
 
 # ==============================
+#       РЈР§РђРЎРўРќРРљР РџР РћР•РљРўРђ
+# ==============================
+class UserToProjectSerializer(serializers.ModelSerializer):
+    user = PreviewUserSerializer()
+    role = RoleProjectSerializer()
+
+    class Meta:
+        model = UserToProject
+        fields = ['id', 'user', 'project', 'role', 'created_at']
+
+
+# ==============================
 #       СЕКЦИИ У ПРОЕКТОВ
 # ==============================
 class SectionProjectSerializer(serializers.ModelSerializer):
@@ -100,10 +113,10 @@ class TaskForSectionProjectSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_responsible(instance):
-        user_to_task = UserToTask.objects.filter(task=instance, level=get_responsible_task())
-        if len(user_to_task) == 0:
+        user_to_task = UserToTask.objects.filter(task=instance, level=get_responsible_task()).first()
+        if user_to_task is None:
             return None
-        return PreviewUserSerializer(user_to_task[0].user).data
+        return PreviewUserSerializer(user_to_task.user).data
 
 
 class SectionProjectWithTaskSerializer(serializers.ModelSerializer):
@@ -115,13 +128,8 @@ class SectionProjectWithTaskSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_body(self, instance):
-        tasksToSection = TaskToSection.objects.filter(section_project=instance)
-        tasks = []
-        for task in tasksToSection:
-            tasks.append(task.task)
-        serializer = TaskForSectionProjectSerializer(data=tasks, many=True)
-        serializer.is_valid()
-        return serializer.data
+        tasks = [task_to_section.task for task_to_section in TaskToSection.objects.filter(section_project=instance)]
+        return TaskForSectionProjectSerializer(tasks, many=True).data
 
 
 class SectionProjectUpdateSerializer(serializers.ModelSerializer):

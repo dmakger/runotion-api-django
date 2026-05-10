@@ -1,13 +1,16 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import Http404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.generics import DestroyAPIView, UpdateAPIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from project.models import Project, SectionProject
+from core.models import ImportanceLevel
+from project.models import Project, RoleProject, SectionProject, UserToProject
 from project.serializers import ProjectSerializer, ProjectUpdateSerializer, \
-    ProjectWithRoleSerializer
+    ProjectWithRoleSerializer, RoleProjectSerializer, UserToProjectSerializer
+from project.service import get_admin_project
 from service.error.error_view import ProjectError
 from service.filter.project import ProjectFilter
 from service.order_by.order_by import order_by
@@ -61,7 +64,7 @@ class ProjectView(viewsets.ModelViewSet):
         code = request.data['code']
         current_user = UserProfile.objects.get(user=request.user)
         result = self.queryset.filter(code=code, admin=current_user)
-        if len(result) > 0:
+        if result.exists():
             return self.error.is_exists()
 
         project = Project.objects.create(name=name, code=code, admin=current_user)
@@ -94,3 +97,111 @@ class ProjectDeleteAPIView(DestroyAPIView):
 
     def perform_destroy(self, instance):
         instance.delete()
+
+
+class RoleProjectListAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        roles = RoleProject.objects.select_related('level').order_by('level__value', 'name')
+        serializer = RoleProjectSerializer(roles, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ProjectUserListAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_project(self, project_pk):
+        return Project.objects.filter(pk=project_pk).first()
+
+    @staticmethod
+    def can_manage_users(project, user):
+        if project.admin.user == user:
+            return True
+
+        user_to_project = UserToProject.objects.filter(
+            project=project,
+            user__user=user,
+        ).select_related('role', 'role__level').first()
+        if user_to_project is None:
+            return False
+
+        role_name = (user_to_project.role.name or '').casefold()
+        if 'manager' in role_name or '\u043c\u0435\u043d\u0435\u0434\u0436\u0435\u0440' in role_name:
+            return True
+
+        role_values = list(ImportanceLevel.objects.order_by('-value').values_list('value', flat=True)[:2])
+        if len(role_values) < 2:
+            return False
+        return user_to_project.role.level.value >= role_values[-1]
+
+    def get(self, request, project_pk):
+        project = self.get_project(project_pk)
+        if project is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        is_admin = project.admin.user == request.user
+        is_member = UserToProject.objects.filter(project=project, user__user=request.user).exists()
+        if not is_admin and not is_member:
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        search = request.query_params.get('search', '').strip()
+        users_to_project = UserToProject.objects.filter(project=project).select_related(
+            'user', 'user__user', 'role', 'role__level'
+        ).order_by('user__name', 'user__user__username')
+        if search:
+            users_to_project = users_to_project.filter(
+                Q(user__name__icontains=search) |
+                Q(user__user__username__icontains=search) |
+                Q(role__name__icontains=search)
+            )
+
+        result = Pagination(request=request, queryset=users_to_project).get()
+        result['results'] = UserToProjectSerializer(result.get('results'), many=True).data
+
+        current_page = int(request.query_params.get('page', 1))
+        admin_role = get_admin_project()
+        admin_matches_search = (
+            not search or
+            search.casefold() in (project.admin.name or '').casefold() or
+            search.casefold() in project.admin.user.username.casefold() or
+            search.casefold() in (admin_role.name or '').casefold()
+        )
+        if current_page == 1 and admin_matches_search:
+            result['results'].insert(0, {
+                'id': None,
+                'user': ProjectSerializer(project).data['admin'],
+                'project': project.id,
+                'role': RoleProjectSerializer(admin_role).data,
+                'created_at': project.created_at.isoformat(),
+            })
+        return Response(result, status=status.HTTP_200_OK)
+
+    def post(self, request, project_pk):
+        project = self.get_project(project_pk)
+        if project is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not self.can_manage_users(project, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        role_id = request.data.get('role_id')
+        if user_id is None or role_id is None:
+            return Response({'detail': 'user_id and role_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_profile = UserProfile.objects.filter(pk=user_id).first()
+        role = RoleProject.objects.filter(pk=role_id).first()
+        if user_profile is None or role is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if user_profile == project.admin:
+            return Response({'detail': 'Project admin already has a role'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_to_project, _ = UserToProject.objects.update_or_create(
+            project=project,
+            user=user_profile,
+            defaults={'role': role},
+        )
+        serializer = UserToProjectSerializer(user_to_project)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

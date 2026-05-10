@@ -23,4 +23,6 @@ class UserSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_department(instance: UserProfile):
+        if instance.department is None:
+            return None
         return instance.department.name

@@ -60,12 +60,12 @@ class TaskView(viewsets.ModelViewSet):
         project_id = request.data['project_id']
 
         current_user = UserProfile.objects.get(user=request.user)
-        projects = Project.objects.filter(pk=project_id)
-        if len(projects) == 0:
+        project = Project.objects.filter(pk=project_id).first()
+        if project is None:
             return self.error.is_not_found()
 
-        code = get_new_code_task_by_project(projects[0])
-        task = Task.objects.create(name=name, code=code, director=current_user, project=projects[0])
+        code = get_new_code_task_by_project(project)
+        task = Task.objects.create(name=name, code=code, director=current_user, project=project)
 
         if request.data.get('section_id') is not None:
             section_id = request.data.get('section_id')
@@ -89,13 +89,12 @@ class DetailTaskView(viewsets.ModelViewSet):
     # Получение данных о задаче
     @action(methods=['get'], detail=False)
     def get_detail_task(self, request, task_id):
-        tasks = self.queryset.filter(pk=task_id)
-        if len(tasks) == 0:
+        task = self.queryset.filter(pk=task_id).first()
+        if task is None:
             self.error.is_not_found()
 
-        task = tasks[0]
         user_to_project = UserToProject.objects.filter(user__user=request.user, project=task.project)
-        if len(user_to_project) == 0:
+        if not user_to_project.exists():
             self.error.forbidden()
 
         result = self.serializer_class(task).data
@@ -138,7 +137,7 @@ class ChecklistTaskView(viewsets.ModelViewSet):
     def get_checklists(self, request, task_id):
         checklists = self.queryset.filter(user__task__id=task_id, user__user__user=request.user) \
             .order_by(order_by(request))
-        if len(checklists) == 0:
+        if not checklists.exists():
             self.error.is_not_found()
 
         result = self.serializer_class(checklists, many=True).data
@@ -148,19 +147,19 @@ class ChecklistTaskView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def create_checklist(self, request, task_id):
         current_user = UserProfile.objects.get(user=request.user)
-        tasks = Task.objects.filter(pk=task_id)
-        if len(tasks) == 0:
+        task = Task.objects.filter(pk=task_id).first()
+        if task is None:
             return self.error.is_not_found()
 
-        user_to_tasks = UserToTask.objects.filter(user=current_user, task=tasks[0])
-        if len(user_to_tasks) == 0:
+        user_to_task = UserToTask.objects.filter(user=current_user, task=task).first()
+        if user_to_task is None:
             return self.error.is_not_found()
 
-        new_position = get_new_position_checklist_by_user_to_task(user_to_tasks[0])
+        new_position = get_new_position_checklist_by_user_to_task(user_to_task)
         name = request.data.get('name')
         if name is None:
             name = f'Чек-лист {new_position}'
-        checklist = ChecklistTask.objects.create(user=user_to_tasks[0], name=name, position=new_position)
+        checklist = ChecklistTask.objects.create(user=user_to_task, name=name, position=new_position)
         serializer = self.serializer_class(checklist)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -209,7 +208,7 @@ class SubtaskChecklistTaskView(viewsets.ModelViewSet):
     def get_subtasks_checklist(self, request, checklist_id):
         subtasks = self.queryset.filter(checklist__id=checklist_id, checklist__user__user__user=request.user) \
             .order_by(order_by(request))
-        if len(subtasks) == 0:
+        if not subtasks.exists():
             self.error.is_not_found()
 
         result = self.serializer_class(subtasks, many=True).data
@@ -219,15 +218,15 @@ class SubtaskChecklistTaskView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def create_subtask(self, request, checklist_id):
         current_user = UserProfile.objects.get(user=request.user)
-        checklists = ChecklistTask.objects.filter(pk=checklist_id, user__user=current_user)
-        if len(checklists) == 0:
+        checklist = ChecklistTask.objects.filter(pk=checklist_id, user__user=current_user).first()
+        if checklist is None:
             return self.error.is_not_found()
 
-        new_position = get_new_position_subtask_checklist_by_user_to_task(checklists[0])
+        new_position = get_new_position_subtask_checklist_by_user_to_task(checklist)
         name = request.data.get('name')
         if name is None:
             name = f'Подзадача {new_position}'
-        subtask = SubtaskChecklist.objects.create(checklist=checklists[0], name=name, position=new_position)
+        subtask = SubtaskChecklist.objects.create(checklist=checklist, name=name, position=new_position)
         serializer = self.serializer_class(subtask)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
