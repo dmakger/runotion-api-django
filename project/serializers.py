@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from core.models import Color
 from core.serializers import ImportanceLevelSerializer, ColorSerializer
 from project.models import Project, SectionProject, UserToProject, RoleProject
 from project.service import get_admin_project
@@ -94,9 +95,22 @@ class UserToProjectSerializer(serializers.ModelSerializer):
 #       СЕКЦИИ У ПРОЕКТОВ
 # ==============================
 class SectionProjectSerializer(serializers.ModelSerializer):
+    color = ColorSerializer(read_only=True)
+    color_value = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = SectionProject
-        fields = ['id', 'name', 'position']
+        fields = ['id', 'name', 'position', 'color', 'color_value']
+
+    def create(self, validated_data):
+        color_value = validated_data.pop('color_value', None)
+        if color_value:
+            color, _ = Color.objects.get_or_create(
+                value=color_value,
+                defaults={'name': color_value},
+            )
+            validated_data['color'] = color
+        return super().create(validated_data)
 
 
 # ========================
@@ -141,7 +155,10 @@ class SectionProjectWithTaskSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_body(self, instance):
-        tasks = [task_to_section.task for task_to_section in TaskToSection.objects.filter(section_project=instance)]
+        tasks = [
+            task_to_section.task
+            for task_to_section in TaskToSection.objects.filter(section_project=instance).order_by('position', 'created_at')
+        ]
         return TaskForSectionProjectSerializer(tasks, many=True).data
 
 

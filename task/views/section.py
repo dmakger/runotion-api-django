@@ -12,6 +12,41 @@ from task.models import TaskToSection, Task
 from task.serializers import TaskSerializer, TaskToSectionSerializer
 
 
+def reorder_task_to_section(task_to_section, new_section_project, position):
+    old_section_project = task_to_section.section_project
+    requested_position = position
+
+    if requested_position is None:
+        requested_position = TaskToSection.objects.filter(section_project=new_section_project).count() + 1
+
+    requested_position = max(1, int(requested_position))
+    target_items = list(
+        TaskToSection.objects
+        .filter(section_project=new_section_project)
+        .exclude(pk=task_to_section.pk)
+        .order_by('position', 'created_at')
+    )
+    insert_index = min(requested_position - 1, len(target_items))
+
+    task_to_section.section_project = new_section_project
+    target_items.insert(insert_index, task_to_section)
+
+    for index, item in enumerate(target_items, start=1):
+        item.position = index
+        item.section_project = new_section_project
+        item.save(update_fields=['section_project', 'position'])
+
+    if old_section_project != new_section_project:
+        old_items = TaskToSection.objects.filter(section_project=old_section_project).order_by('position', 'created_at')
+        for index, item in enumerate(old_items, start=1):
+            if item.position == index:
+                continue
+            item.position = index
+            item.save(update_fields=['position'])
+
+    return old_section_project
+
+
 class SectionProjectDetailAPIView(RetrieveAPIView):
     queryset = SectionProject.objects.all()
     serializer_class = SectionProjectSerializer
@@ -32,10 +67,11 @@ class UpdateTaskSectionProject(APIView):
     def put(self, request, *args, **kwargs):
         new_section_project = get_object_or_404(SectionProject, pk=self.kwargs.get('section_project_id'))
         task_to_section = get_object_or_404(TaskToSection, task__pk=self.kwargs.get('task_id'))
-
-        old_section_project = task_to_section.section_project
-        task_to_section.section_project = new_section_project
-        task_to_section.save()
+        old_section_project = reorder_task_to_section(
+            task_to_section,
+            new_section_project,
+            request.data.get('position'),
+        )
 
         return JsonResponse({
             "new_section_id": task_to_section.section_project.id,

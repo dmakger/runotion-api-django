@@ -73,7 +73,7 @@ class TaskToSection(models.Model):
 @receiver(post_save, sender=TaskToSection)
 def task_to_section_on_create_update(sender, instance, created, **kwargs):
     if created:
-        sections = TaskToSection.objects.filter(task=instance.task).order_by('position')
+        sections = TaskToSection.objects.filter(section_project=instance.section_project).order_by('position', 'created_at')
         instance.position = get_new_position(sections, instance.position)
         instance.save()
         fix_positions(sections)
@@ -81,7 +81,7 @@ def task_to_section_on_create_update(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=TaskToSection)
 def task_to_section_on_delete(sender, instance, **kwargs):
-    sections = TaskToSection.objects.filter(task=instance.task).order_by('position')
+    sections = TaskToSection.objects.filter(section_project=instance.section_project).order_by('position', 'created_at')
     fix_positions(sections)
 
 

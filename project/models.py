@@ -89,7 +89,8 @@ def section_project_on_create_update(sender, instance, created, **kwargs):
     if created:
         qs = SectionProject.objects.filter(project=instance.project).order_by('position')
         instance.position = get_new_position(qs, instance.position)
-        instance.color = get_color(qs.count()-1)
+        if instance.color is None:
+            instance.color = get_color(qs.count()-1)
         instance.save()
         fix_positions(qs)
 
