@@ -1,4 +1,4 @@
-from django.db.models import Subquery, OuterRef
+from django.db.models import Subquery, OuterRef, Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.generics import DestroyAPIView, UpdateAPIView, get_object_or_404
@@ -12,9 +12,9 @@ from service.pagination import Pagination
 from service.task import get_new_code_task_by_project, get_new_position_checklist_by_user_to_task, \
     get_new_position_subtask_checklist_by_user_to_task
 from service.validator import Validator
-from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist, TaskToSection
+from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist, TaskToSection, TaskCategory
 from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer, \
-    ChecklistTaskPreviewSerializer
+    ChecklistTaskPreviewSerializer, TaskCategorySerializer
 from user.models import UserProfile
 
 
@@ -65,7 +65,12 @@ class TaskView(viewsets.ModelViewSet):
             return self.error.is_not_found()
 
         code = get_new_code_task_by_project(project)
-        task = Task.objects.create(name=name, code=code, director=current_user, project=project)
+        category = None
+        category_id = request.data.get('category_id')
+        if category_id is not None:
+            category = get_object_or_404(TaskCategory, pk=category_id, project=project)
+
+        task = Task.objects.create(name=name, code=code, director=current_user, project=project, category=category)
 
         if request.data.get('section_id') is not None:
             section_id = request.data.get('section_id')
@@ -75,6 +80,61 @@ class TaskView(viewsets.ModelViewSet):
 
         serializer = self.serializer_class(task)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class TaskCategoryView(viewsets.ModelViewSet):
+    serializer_class = TaskCategorySerializer
+    queryset = TaskCategory.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(
+            Q(project__admin__user=self.request.user) |
+            Q(project__usertoproject__user__user=self.request.user) |
+            Q(project__task__director__user=self.request.user) |
+            Q(project__task__usertotask__user__user=self.request.user)
+        ).distinct()
+
+    def get_project(self, request, project_id):
+        project = get_object_or_404(Project, pk=project_id)
+        has_project_access = project.admin.user == request.user or UserToProject.objects.filter(
+            user__user=request.user,
+            project=project
+        ).exists()
+        has_task_access = Task.objects.filter(
+            Q(director__user=request.user) | Q(usertotask__user__user=request.user),
+            project=project
+        ).exists()
+        if not has_project_access and not has_task_access:
+            return None
+        return project
+
+    @action(methods=['get'], detail=False)
+    def get_categories(self, request, project_id):
+        project = self.get_project(request, project_id)
+        if project is None:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        search = request.GET.get('search')
+        categories = self.get_queryset().filter(project=project).order_by('name')
+        if search:
+            categories = categories.filter(name__icontains=search)
+
+        return Response(self.serializer_class(categories, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['post'], detail=False)
+    def create_category(self, request, project_id):
+        project = self.get_project(request, project_id)
+        if project is None:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if self.queryset.filter(project=project, name=serializer.validated_data['name']).exists():
+            return Response({'name': ['Категория с таким названием уже существует']},
+                            status=status.HTTP_400_BAD_REQUEST)
+        category = serializer.save(project=project)
+        return Response(self.serializer_class(category).data, status=status.HTTP_201_CREATED)
 
 
 # ==============================
@@ -106,6 +166,10 @@ class TaskUpdateAPIView(UpdateAPIView):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         serializer.save()

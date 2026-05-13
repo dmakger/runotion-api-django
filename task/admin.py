@@ -1,12 +1,17 @@
 from django.contrib import admin
 
 from service.position import get_new_position, fix_positions
-from task.models import Task, UserLevelTask, UserToTask, CommentTask, ChecklistTask, SubtaskChecklist, TaskToSection
+from task.models import Task, UserLevelTask, UserToTask, CommentTask, ChecklistTask, SubtaskChecklist, TaskToSection, \
+    TaskCategory
 
 
 #  Задачи
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ['project', 'name', 'code', 'director', 'created_at', 'deadline', 'completed_at']
+    list_display = ['project', 'name', 'code', 'category', 'director', 'created_at', 'deadline', 'completed_at']
+
+
+class TaskCategoryAdmin(admin.ModelAdmin):
+    list_display = ['project', 'name', 'color', 'created_at']
 
 
 #  Задачи к Секции
@@ -58,6 +63,7 @@ class SubtaskChecklistAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Task, TaskAdmin)
+admin.site.register(TaskCategory, TaskCategoryAdmin)
 admin.site.register(TaskToSection, TaskToSectionAdmin)
 admin.site.register(UserLevelTask, UserLevelTaskAdmin)
 admin.site.register(UserToTask, UserToTaskAdmin)

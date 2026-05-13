@@ -106,10 +106,11 @@ class TaskForSectionProjectSerializer(serializers.ModelSerializer):
     director = PreviewUserSerializer()
     responsible = serializers.SerializerMethodField()
     project = PreviewProjectSerializer()
+    category = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
-        fields = ['id', 'name', 'code', 'deadline', 'director', 'responsible', 'project']
+        fields = ['id', 'name', 'code', 'deadline', 'director', 'responsible', 'project', 'category']
 
     @staticmethod
     def get_responsible(instance):
@@ -117,6 +118,18 @@ class TaskForSectionProjectSerializer(serializers.ModelSerializer):
         if user_to_task is None:
             return None
         return PreviewUserSerializer(user_to_task.user).data
+
+    @staticmethod
+    def get_category(instance):
+        if instance.category is None:
+            return None
+        return {
+            'id': instance.category.id,
+            'project': instance.category.project_id,
+            'name': instance.category.name,
+            'color': instance.category.color,
+            'created_at': instance.category.created_at,
+        }
 
 
 class SectionProjectWithTaskSerializer(serializers.ModelSerializer):

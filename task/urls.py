@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from task.views.section import SectionProjectDetailAPIView, UpdateTaskSectionProject, AddTaskToSectionProject
 from task.views.task import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
     SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView, \
-    TaskUpdateAPIView
+    TaskUpdateAPIView, TaskCategoryView
 
 router = DefaultRouter()
 
@@ -15,6 +15,9 @@ urlpatterns = [
     path("all/", TaskView.as_view({'post': 'get_tasks'})),
     path("create/", TaskView.as_view({'post': 'create_task'})),
     path("<int:pk>/update/", TaskUpdateAPIView.as_view()),
+    path("project/<int:project_id>/category/", TaskCategoryView.as_view({'get': 'get_categories', 'post': 'create_category'})),
+    path("category/<int:pk>/update/", TaskCategoryView.as_view({'put': 'update', 'patch': 'partial_update'})),
+    path("category/<int:pk>/delete/", TaskCategoryView.as_view({'delete': 'destroy'})),
 
     # Задачи по секциям
     path("<int:task_id>/add/section/<int:section_project_id>/", AddTaskToSectionProject.as_view()),

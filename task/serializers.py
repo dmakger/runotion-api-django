@@ -1,9 +1,16 @@
 from rest_framework import serializers
 
 from project.serializers import PreviewProjectSerializer, SectionProjectSerializer
-from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection
+from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection, TaskCategory
 from task.service import get_responsible_task, get_collaborator_task, get_observer_task
 from user.serializers import PreviewUserSerializer
+
+
+class TaskCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskCategory
+        fields = ['id', 'project', 'name', 'color', 'created_at']
+        read_only_fields = ['project', 'created_at']
 
 
 # ========================
@@ -13,10 +20,18 @@ class TaskSerializer(serializers.ModelSerializer):
     director = PreviewUserSerializer()
     responsible = serializers.SerializerMethodField()
     project = PreviewProjectSerializer()
+    category = TaskCategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=TaskCategory.objects.all(),
+        source='category',
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
 
     class Meta:
         model = Task
-        fields = ['id', 'name', 'deadline', 'code', 'director', 'responsible', 'project']
+        fields = ['id', 'name', 'deadline', 'code', 'director', 'responsible', 'project', 'category', 'category_id']
 
     @staticmethod
     def get_responsible(instance):
@@ -24,6 +39,14 @@ class TaskSerializer(serializers.ModelSerializer):
         if user_to_task is None:
             return None
         return PreviewUserSerializer(user_to_task.user).data
+
+    def validate_category_id(self, value):
+        if value is None:
+            return value
+        task = self.instance
+        if task is not None and value.project_id != task.project_id:
+            raise serializers.ValidationError('Категория должна принадлежать проекту задачи')
+        return value
 
 
 # ========================
@@ -35,6 +58,7 @@ class DetailTaskSerializer(serializers.ModelSerializer):
     collaborators = serializers.SerializerMethodField()
     observers = serializers.SerializerMethodField()
     project = PreviewProjectSerializer()
+    category = TaskCategorySerializer(read_only=True)
 
     class Meta:
         model = Task

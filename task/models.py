@@ -8,6 +8,21 @@ from service.position import get_new_position, fix_positions
 from user.models import UserProfile
 
 
+class TaskCategory(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
+    name = models.CharField('Название', max_length=128)
+    color = models.CharField('Цвет', max_length=32, default='#6D5DFB')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Категория задач"
+        verbose_name_plural = "Категории задач"
+        unique_together = ('project', 'name')
+
+    def __str__(self):
+        return f'{self.project.name} ===> {self.name}'
+
+
 # ===============
 #     Задачи
 # ==============
@@ -19,6 +34,8 @@ class Task(models.Model):
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     deadline = models.DateTimeField('Крайний срок', null=True, default=None, blank=True)
     completed_at = models.DateTimeField('Дата завершения', null=True, default=None, blank=True)
+    category = models.ForeignKey(TaskCategory, on_delete=models.SET_NULL, verbose_name='Категория',
+                                 null=True, default=None, blank=True)
 
     class Meta:
         verbose_name = "Задача"
