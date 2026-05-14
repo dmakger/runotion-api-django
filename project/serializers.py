@@ -113,6 +113,14 @@ class SectionProjectSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class PreviewSectionProjectSerializer(serializers.ModelSerializer):
+    color = ColorSerializer()
+
+    class Meta:
+        model = SectionProject
+        fields = ['id', 'name', 'position', 'color']
+
+
 # ========================
 #    Задача в списке
 # ========================

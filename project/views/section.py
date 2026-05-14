@@ -11,6 +11,24 @@ from service.error.error_view import ProjectError, SectionProjectError
 from service.position import fix_positions
 
 
+def move_section_project(instance, position):
+    requested_position = max(1, int(position))
+    sections = list(
+        SectionProject.objects
+        .filter(project=instance.project)
+        .exclude(pk=instance.pk)
+        .order_by('position', 'created_at')
+    )
+    insert_index = min(requested_position - 1, len(sections))
+    sections.insert(insert_index, instance)
+
+    for index, section in enumerate(sections, start=1):
+        if section.position == index:
+            continue
+        section.position = index
+        section.save(update_fields=['position'])
+
+
 # ==============================
 #       СЕКЦИИ У ПРОЕКТОВ
 # ==============================
@@ -56,17 +74,16 @@ class SectionProjectUpdateAPIView(UpdateAPIView):
 
     def perform_update(self, serializer):
         instance = serializer.instance
-        old_position = instance.position
+        new_position = serializer.validated_data.get('position')
 
         # Проверяем, что пользователь является админом
         if self.request.user != instance.project.admin.user:
             return self.error.forbidden()
 
-        serializer.save()
+        serializer.save(position=instance.position if new_position is not None else instance.position)
 
-        if old_position != instance.position:
-            qs = self.queryset.filter(project=instance.project).order_by('position')
-            fix_positions(qs, instance, old_position)
+        if new_position is not None:
+            move_section_project(instance, new_position)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 

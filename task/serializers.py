@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from project.serializers import PreviewProjectSerializer, SectionProjectSerializer
+from project.serializers import PreviewProjectSerializer, PreviewSectionProjectSerializer, SectionProjectSerializer
 from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection, TaskCategory
 from task.service import get_responsible_task, get_collaborator_task, get_observer_task
 from user.serializers import PreviewUserSerializer
@@ -59,6 +59,7 @@ class DetailTaskSerializer(serializers.ModelSerializer):
     observers = serializers.SerializerMethodField()
     project = PreviewProjectSerializer()
     category = TaskCategorySerializer(read_only=True)
+    section = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -86,6 +87,13 @@ class DetailTaskSerializer(serializers.ModelSerializer):
             return []
         users = [user.user for user in user_to_task]
         return PreviewUserSerializer(users, many=True).data
+
+    @staticmethod
+    def get_section(instance):
+        task_to_section = TaskToSection.objects.filter(task=instance).select_related('section_project').first()
+        if task_to_section is None:
+            return None
+        return PreviewSectionProjectSerializer(task_to_section.section_project).data
 
 
 # ========================

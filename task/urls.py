@@ -34,6 +34,7 @@ urlpatterns = [
     path("<int:task_id>/checklist/create/", ChecklistTaskView.as_view({'post': 'create_checklist'})),
     path("checklist/<int:pk>/update/", ChecklistUpdateAPIView.as_view()),
     path("checklist/<int:pk>/delete/", ChecklistTaskDeleteAPIView.as_view()),
+    path("checklist/<int:pk>/delete", ChecklistTaskDeleteAPIView.as_view()),
 
     # Подзадачи у чеклистов
     path("checklist/<int:checklist_id>/subtask/", SubtaskChecklistTaskView.as_view({'get': 'get_subtasks_checklist'})),
