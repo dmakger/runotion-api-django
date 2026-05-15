@@ -21,6 +21,7 @@ class TaskSerializer(serializers.ModelSerializer):
     responsible = serializers.SerializerMethodField()
     project = PreviewProjectSerializer()
     category = TaskCategorySerializer(read_only=True)
+    section = serializers.SerializerMethodField()
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=TaskCategory.objects.all(),
         source='category',
@@ -31,7 +32,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id', 'name', 'deadline', 'code', 'director', 'responsible', 'project', 'category', 'category_id']
+        fields = ['id', 'name', 'deadline', 'completed_at', 'code', 'director', 'responsible', 'project', 'category', 'category_id', 'section']
 
     @staticmethod
     def get_responsible(instance):
@@ -47,6 +48,13 @@ class TaskSerializer(serializers.ModelSerializer):
         if task is not None and value.project_id != task.project_id:
             raise serializers.ValidationError('Категория должна принадлежать проекту задачи')
         return value
+
+    @staticmethod
+    def get_section(instance):
+        task_to_section = TaskToSection.objects.filter(task=instance).select_related('section_project').first()
+        if task_to_section is None:
+            return None
+        return PreviewSectionProjectSerializer(task_to_section.section_project).data
 
 
 # ========================

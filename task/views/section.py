@@ -1,5 +1,6 @@
 from django.db.models import QuerySet
 from django.http import JsonResponse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView, get_object_or_404
 from rest_framework.permissions import IsAuthenticated
@@ -36,6 +37,9 @@ def reorder_task_to_section(task_to_section, new_section_project, position):
         item.section_project = new_section_project
         item.save(update_fields=['section_project', 'position'])
 
+    task_to_section.task.completed_at = timezone.now() if new_section_project.is_final else None
+    task_to_section.task.save(update_fields=['completed_at'])
+
     if old_section_project != new_section_project:
         old_items = TaskToSection.objects.filter(section_project=old_section_project).order_by('position', 'created_at')
         for index, item in enumerate(old_items, start=1):
@@ -66,7 +70,10 @@ class UpdateTaskSectionProject(APIView):
 
     def put(self, request, *args, **kwargs):
         new_section_project = get_object_or_404(SectionProject, pk=self.kwargs.get('section_project_id'))
-        task_to_section = get_object_or_404(TaskToSection, task__pk=self.kwargs.get('task_id'))
+        task = get_object_or_404(Task, pk=self.kwargs.get('task_id'))
+        task_to_section = TaskToSection.objects.filter(task=task).first()
+        if task_to_section is None:
+            task_to_section = TaskToSection.objects.create(task=task, section_project=new_section_project)
         old_section_project = reorder_task_to_section(
             task_to_section,
             new_section_project,

@@ -100,7 +100,7 @@ class SectionProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SectionProject
-        fields = ['id', 'name', 'position', 'color', 'color_value']
+        fields = ['id', 'name', 'position', 'color', 'color_value', 'is_final']
 
     def create(self, validated_data):
         color_value = validated_data.pop('color_value', None)
@@ -118,7 +118,7 @@ class PreviewSectionProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SectionProject
-        fields = ['id', 'name', 'position', 'color']
+        fields = ['id', 'name', 'position', 'color', 'is_final']
 
 
 # ========================
@@ -132,7 +132,7 @@ class TaskForSectionProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id', 'name', 'code', 'deadline', 'director', 'responsible', 'project', 'category']
+        fields = ['id', 'name', 'code', 'deadline', 'completed_at', 'director', 'responsible', 'project', 'category']
 
     @staticmethod
     def get_responsible(instance):
@@ -173,14 +173,16 @@ class SectionProjectWithTaskSerializer(serializers.ModelSerializer):
 class SectionProjectUpdateSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=False)
     position = serializers.IntegerField(required=False)
+    is_final = serializers.BooleanField(required=False)
 
     class Meta:
         model = SectionProject
-        fields = ['id', 'name', 'position']
+        fields = ['id', 'name', 'position', 'is_final']
 
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
         instance.position = validated_data.get('position', instance.position)
+        instance.is_final = validated_data.get('is_final', instance.is_final)
 
         instance.save()
         return instance

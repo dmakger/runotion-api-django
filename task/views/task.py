@@ -1,4 +1,5 @@
 from django.db.models import Subquery, OuterRef, Q
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.generics import DestroyAPIView, UpdateAPIView, get_object_or_404
@@ -64,6 +65,10 @@ class TaskView(viewsets.ModelViewSet):
         if project is None:
             return self.error.is_not_found()
 
+        name = request.data.get('name')
+        if name is None:
+            name = f'Новая задача #{Task.objects.filter(project=project).count() + 1}'
+
         code = get_new_code_task_by_project(project)
         category = None
         category_id = request.data.get('category_id')
@@ -72,11 +77,19 @@ class TaskView(viewsets.ModelViewSet):
 
         task = Task.objects.create(name=name, code=code, director=current_user, project=project, category=category)
 
+        section = None
         if request.data.get('section_id') is not None:
             section_id = request.data.get('section_id')
             section = get_object_or_404(SectionProject, pk=section_id)
+        else:
+            section = SectionProject.objects.filter(project=project).order_by('position', 'created_at').first()
+
+        if section is not None:
             task_to_section = TaskToSection.objects.create(task=task, section_project=section)
             task_to_section.save()
+            if section.is_final:
+                task.completed_at = timezone.now()
+                task.save(update_fields=['completed_at'])
 
         serializer = self.serializer_class(task)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

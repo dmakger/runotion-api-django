@@ -81,7 +81,10 @@ def task_to_section_on_create_update(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=TaskToSection)
 def task_to_section_on_delete(sender, instance, **kwargs):
-    sections = TaskToSection.objects.filter(section_project=instance.section_project).order_by('position', 'created_at')
+    if instance.section_project_id is None:
+        return
+
+    sections = TaskToSection.objects.filter(section_project_id=instance.section_project_id).order_by('position', 'created_at')
     fix_positions(sections)
 
 
@@ -163,7 +166,10 @@ def checklist_task_on_create_update(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=ChecklistTask)
 def checklist_task_on_delete(sender, instance, **kwargs):
-    sections = ChecklistTask.objects.filter(user=instance.user).order_by('position')
+    if instance.user_id is None:
+        return
+
+    sections = ChecklistTask.objects.filter(user_id=instance.user_id).order_by('position')
     fix_positions(sections)
 
 
@@ -196,5 +202,8 @@ def subtask_checklist_on_create_update(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=SubtaskChecklist)
 def subtask_checklist_on_delete(sender, instance, **kwargs):
-    qs = SubtaskChecklist.objects.filter(checklist=instance.checklist).order_by('position')
+    if instance.checklist_id is None:
+        return
+
+    qs = SubtaskChecklist.objects.filter(checklist_id=instance.checklist_id).order_by('position')
     fix_positions(qs)

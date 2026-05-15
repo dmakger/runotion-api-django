@@ -74,6 +74,7 @@ class SectionProject(models.Model):
     name = models.CharField('Название', max_length=128)
     position = models.IntegerField('Позиция', default=None, null=True, blank=True)
     color = models.ForeignKey(Color, on_delete=models.CASCADE, verbose_name='Цвет', default=None, null=True, blank=True)
+    is_final = models.BooleanField('Завершающий этап', default=False)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:

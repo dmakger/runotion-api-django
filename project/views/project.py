@@ -94,6 +94,13 @@ class ProjectUpdateAPIView(UpdateAPIView):
 class ProjectDeleteAPIView(DestroyAPIView):
     queryset = Project.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+    error = ProjectError()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if request.user != instance.admin.user:
+            return self.error.forbidden()
+        return super().destroy(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
         instance.delete()
