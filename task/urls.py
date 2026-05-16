@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from task.views.section import SectionProjectDetailAPIView, UpdateTaskSectionProject, AddTaskToSectionProject
 from task.views.task import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
     SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView, \
-    TaskUpdateAPIView, TaskCategoryView
+    TaskUpdateAPIView, TaskCategoryView, TaskUserAPIView, TaskCommentAPIView
 
 router = DefaultRouter()
 
@@ -27,6 +27,9 @@ urlpatterns = [
 
     # Детальная страница задачи
     path("<int:task_id>/", DetailTaskView.as_view({'get': 'get_detail_task'})),
+    path("<int:task_id>/users/", TaskUserAPIView.as_view()),
+    path("<int:task_id>/users/<int:user_id>/", TaskUserAPIView.as_view()),
+    path("<int:task_id>/comments/", TaskCommentAPIView.as_view()),
     path("<int:pk>/delete/", TaskDeleteAPIView.as_view()),
 
     # Чеклист у задачи

@@ -4,6 +4,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.generics import DestroyAPIView, UpdateAPIView, get_object_or_404
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from project.models import UserToProject, Project, SectionProject
 from service.error.error_view import TaskError, ChecklistError, SubtaskChecklistError
@@ -13,10 +14,32 @@ from service.pagination import Pagination
 from service.task import get_new_code_task_by_project, get_new_position_checklist_by_user_to_task, \
     get_new_position_subtask_checklist_by_user_to_task
 from service.validator import Validator
-from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist, TaskToSection, TaskCategory
+from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist, TaskToSection, TaskCategory, CommentTask
 from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer, \
-    ChecklistTaskPreviewSerializer, TaskCategorySerializer
+    ChecklistTaskPreviewSerializer, TaskCategorySerializer, CommentTaskSerializer
+from task.service import get_collaborator_task, get_observer_task, get_responsible_task
 from user.models import UserProfile
+
+
+def can_edit_task(task, user):
+    if task.director.user == user:
+        return True
+
+    return UserToTask.objects.filter(
+        task=task,
+        user__user=user,
+        level__in=[get_responsible_task(), get_collaborator_task()],
+    ).exists()
+
+
+def can_view_task(task, user):
+    if task.director.user == user:
+        return True
+
+    return UserToTask.objects.filter(task=task, user__user=user).exists() or UserToProject.objects.filter(
+        project=task.project,
+        user__user=user,
+    ).exists()
 
 
 # ============================
@@ -29,13 +52,36 @@ class TaskView(viewsets.ModelViewSet):
     error = TaskError()
     filter = TaskFilter
 
+    @staticmethod
+    def apply_search(queryset, search):
+        if not search:
+            return queryset
+
+        return queryset.filter(
+            Q(name__icontains=search) |
+            Q(code__icontains=search) |
+            Q(project__name__icontains=search) |
+            Q(project__code__icontains=search) |
+            Q(description__icontains=search) |
+            Q(director__name__icontains=search) |
+            Q(director__user__username__icontains=search) |
+            Q(category__name__icontains=search) |
+            Q(tasktosection__section_project__name__icontains=search) |
+            Q(usertotask__user__name__icontains=search) |
+            Q(usertotask__user__user__username__icontains=search) |
+            Q(usertotask__level__name__icontains=search)
+        ).distinct()
+
     @action(methods=['post'], detail=False)
     def get_tasks(self, request):
         filter_data = self.filter(request)
         user = filter_data.result.pop('user')
+        search = request.data.get('search') or request.query_params.get('search')
 
         user_tasks = self.queryset.filter(usertotask__user__user=user, **filter_data.result)
         director_tasks = Task.objects.filter(director__user=user, **filter_data.result)
+        user_tasks = self.apply_search(user_tasks, search)
+        director_tasks = self.apply_search(director_tasks, search)
 
         if not request.data.get('has_section', True):
             user_tasks = user_tasks.exclude(
@@ -181,12 +227,109 @@ class TaskUpdateAPIView(UpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def update(self, request, *args, **kwargs):
+        if not can_edit_task(self.get_object(), request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
         kwargs['partial'] = True
         return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class TaskUserAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @staticmethod
+    def get_level(level_name):
+        if level_name == 'responsible':
+            return get_responsible_task()
+        if level_name == 'collaborator':
+            return get_collaborator_task()
+        if level_name == 'observer':
+            return get_observer_task()
+        return None
+
+    @staticmethod
+    def can_manage_task(task, user):
+        return can_edit_task(task, user)
+
+    @staticmethod
+    def is_project_member(task, user_profile):
+        if task.project.admin_id == user_profile.id:
+            return True
+        return UserToProject.objects.filter(project=task.project, user=user_profile).exists()
+
+    def post(self, request, task_id):
+        task = get_object_or_404(Task, pk=task_id)
+        if not self.can_manage_task(task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        level = self.get_level(request.data.get('level'))
+        if user_id is None or level is None:
+            return Response({'detail': 'user_id and level are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = get_object_or_404(UserProfile, pk=user_id)
+        if not self.is_project_member(task, user):
+            return Response({'detail': 'User is not a project member'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if level == get_responsible_task():
+            UserToTask.objects.filter(task=task, level=level).exclude(user=user).update(level=get_collaborator_task())
+
+        user_to_task = UserToTask.objects.filter(task=task, user=user).first()
+        if user_to_task is None:
+            UserToTask.objects.create(task=task, user=user, level=level)
+        else:
+            user_to_task.level = level
+            user_to_task.save(update_fields=['level'])
+
+        return Response(DetailTaskSerializer(task).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, task_id, user_id=None):
+        task = get_object_or_404(Task, pk=task_id)
+        if not self.can_manage_task(task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        if user_id is None:
+            return Response({'detail': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_to_task = UserToTask.objects.filter(task=task, user_id=user_id).select_related('level').first()
+        if user_to_task is None:
+            return Response(DetailTaskSerializer(task).data, status=status.HTTP_200_OK)
+        if user_to_task.level == get_responsible_task():
+            return Response({'detail': 'Responsible user cannot be removed'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_to_task.delete()
+        return Response(DetailTaskSerializer(task).data, status=status.HTTP_200_OK)
+
+
+class TaskCommentAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, task_id):
+        task = get_object_or_404(Task, pk=task_id)
+        if not can_view_task(task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        comments = CommentTask.objects.filter(user__task=task).select_related('user__user').order_by('created_at', 'id')
+        return Response(CommentTaskSerializer(comments, many=True).data, status=status.HTTP_200_OK)
+
+    def post(self, request, task_id):
+        task = get_object_or_404(Task, pk=task_id)
+        if not can_edit_task(task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        text = (request.data.get('text') or '').strip()
+        if not text:
+            return Response({'detail': 'text is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        current_user = get_object_or_404(UserProfile, user=request.user)
+        user_to_task = UserToTask.objects.filter(task=task, user=current_user).first()
+        if user_to_task is None:
+            user_to_task = UserToTask.objects.create(task=task, user=current_user, level=get_collaborator_task())
+
+        comment = CommentTask.objects.create(user=user_to_task, text=text)
+        return Response(CommentTaskSerializer(comment).data, status=status.HTTP_201_CREATED)
 
 
 # ==============================
@@ -227,6 +370,8 @@ class ChecklistTaskView(viewsets.ModelViewSet):
         task = Task.objects.filter(pk=task_id).first()
         if task is None:
             return self.error.is_not_found()
+        if not can_edit_task(task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
         user_to_task = UserToTask.objects.filter(user=current_user, task=task).first()
         if user_to_task is None:
@@ -247,6 +392,12 @@ class ChecklistUpdateAPIView(UpdateAPIView):
     serializer_class = ChecklistTaskPreviewSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def update(self, request, *args, **kwargs):
+        if not can_edit_task(self.get_object().user.task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         instance = serializer.instance
         new_position = serializer.validated_data.get('position')
@@ -266,6 +417,11 @@ class ChecklistUpdateAPIView(UpdateAPIView):
 class ChecklistTaskDeleteAPIView(DestroyAPIView):
     queryset = ChecklistTask.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        if not can_edit_task(self.get_object().user.task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
         instance.delete()
@@ -298,6 +454,8 @@ class SubtaskChecklistTaskView(viewsets.ModelViewSet):
         checklist = ChecklistTask.objects.filter(pk=checklist_id, user__user=current_user).first()
         if checklist is None:
             return self.error.is_not_found()
+        if not can_edit_task(checklist.user.task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
         new_position = get_new_position_subtask_checklist_by_user_to_task(checklist)
         name = request.data.get('name')
@@ -313,6 +471,12 @@ class SubtaskChecklistUpdateAPIView(UpdateAPIView):
     queryset = SubtaskChecklist.objects.all()
     serializer_class = SubtaskChecklistSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        if not can_edit_task(self.get_object().checklist.user.task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         instance = serializer.instance
@@ -335,6 +499,11 @@ class SubtaskChecklistUpdateAPIView(UpdateAPIView):
 class SubtaskChecklistTaskDeleteAPIView(DestroyAPIView):
     queryset = SubtaskChecklist.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        if not can_edit_task(self.get_object().checklist.user.task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
         instance.delete()

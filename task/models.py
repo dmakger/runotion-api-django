@@ -30,6 +30,7 @@ class Task(models.Model):
     director = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Постановщик')
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект')
     name = models.CharField('Название', max_length=128)
+    description = models.TextField('Описание', blank=True, default='')
     code = models.CharField('Код', max_length=128)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     deadline = models.DateTimeField('Крайний срок', null=True, default=None, blank=True)
@@ -134,7 +135,7 @@ class CommentTask(models.Model):
         verbose_name_plural = "Комментарии у задачи"
 
     def __str__(self):
-        return f"{self.task.name} ===> {self.user.name}"
+        return f"{self.user.task.name} ===> {self.user.user.name}"
 
 
 # =============================

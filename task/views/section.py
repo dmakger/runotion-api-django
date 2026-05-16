@@ -11,6 +11,7 @@ from project.models import SectionProject
 from project.serializers import SectionProjectSerializer, TaskForSectionProjectSerializer
 from task.models import TaskToSection, Task
 from task.serializers import TaskSerializer, TaskToSectionSerializer
+from task.views.task import can_edit_task
 
 
 def reorder_task_to_section(task_to_section, new_section_project, position):
@@ -71,6 +72,8 @@ class UpdateTaskSectionProject(APIView):
     def put(self, request, *args, **kwargs):
         new_section_project = get_object_or_404(SectionProject, pk=self.kwargs.get('section_project_id'))
         task = get_object_or_404(Task, pk=self.kwargs.get('task_id'))
+        if not can_edit_task(task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
         task_to_section = TaskToSection.objects.filter(task=task).first()
         if task_to_section is None:
             task_to_section = TaskToSection.objects.create(task=task, section_project=new_section_project)

@@ -29,14 +29,32 @@ class ProjectView(viewsets.ModelViewSet):
     filter = ProjectFilter
     error = ProjectError()
 
+    @staticmethod
+    def apply_search(queryset, search):
+        if not search:
+            return queryset
+
+        return queryset.filter(
+            Q(name__icontains=search) |
+            Q(code__icontains=search) |
+            Q(admin__name__icontains=search) |
+            Q(admin__user__username__icontains=search) |
+            Q(usertoproject__user__name__icontains=search) |
+            Q(usertoproject__user__user__username__icontains=search) |
+            Q(usertoproject__role__name__icontains=search)
+        ).distinct()
+
     # Получение всех проектов
     @action(methods=['get'], detail=False)
     def get_projects(self, request):
         filter_data = self.filter(request)
         user = filter_data.result.pop('user')
+        search = request.query_params.get('search')
 
         user_projects = self.queryset.filter(usertoproject__user__user=user, **filter_data.result)
         admin_projects = self.queryset.filter(admin__user=user, **filter_data.result)
+        user_projects = self.apply_search(user_projects, search)
+        admin_projects = self.apply_search(admin_projects, search)
         all_projects = user_projects.union(admin_projects).order_by(order_by(request))
 
         result = Pagination(request=request, queryset=all_projects).get()

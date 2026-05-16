@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from project.serializers import PreviewProjectSerializer, PreviewSectionProjectSerializer, SectionProjectSerializer
-from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection, TaskCategory
+from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection, TaskCategory, CommentTask
 from task.service import get_responsible_task, get_collaborator_task, get_observer_task
 from user.serializers import PreviewUserSerializer
 
@@ -32,7 +32,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id', 'name', 'deadline', 'completed_at', 'code', 'director', 'responsible', 'project', 'category', 'category_id', 'section']
+        fields = ['id', 'name', 'description', 'deadline', 'completed_at', 'code', 'director', 'responsible', 'project', 'category', 'category_id', 'section']
 
     @staticmethod
     def get_responsible(instance):
@@ -102,6 +102,14 @@ class DetailTaskSerializer(serializers.ModelSerializer):
         if task_to_section is None:
             return None
         return PreviewSectionProjectSerializer(task_to_section.section_project).data
+
+
+class CommentTaskSerializer(serializers.ModelSerializer):
+    user = PreviewUserSerializer(source='user.user', read_only=True)
+
+    class Meta:
+        model = CommentTask
+        fields = ['id', 'user', 'text', 'created_at']
 
 
 # ========================
