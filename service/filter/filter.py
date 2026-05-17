@@ -12,8 +12,8 @@ class Filter:
         self.has_user_id()
 
     def is_my_task(self):
-        # if self.MY not in self.request.data.keys():
-        #     return None
+        if self.MY not in self.request.data.keys():
+            return None
         self.result['user'] = self.request.user
 
     def has_user_id(self):

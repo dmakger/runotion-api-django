@@ -49,7 +49,7 @@ class ProjectView(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def get_projects(self, request):
         filter_data = self.filter(request)
-        user = filter_data.result.pop('user')
+        user = filter_data.result.pop('user', request.user)
         search = request.query_params.get('search')
 
         user_projects = self.queryset.filter(usertoproject__user__user=user, **filter_data.result)
@@ -66,7 +66,7 @@ class ProjectView(viewsets.ModelViewSet):
     @action(methods=['get'], detail=True)
     def get_project_by_id(self, request, pk=None):
         try:
-            project = self.get_object()  # Получение объекта проекта по 'pk'
+            project = self.get_object()
             serializer = self.get_serializer(project)
             return Response(serializer.data)
         except Http404:
@@ -101,7 +101,6 @@ class ProjectUpdateAPIView(UpdateAPIView):
     def perform_update(self, serializer):
         instance = serializer.instance
 
-        # Проверяем, что пользователь является админом
         if self.request.user != instance.admin.user:
             return self.error.forbidden()
 

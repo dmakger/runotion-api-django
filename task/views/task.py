@@ -36,10 +36,17 @@ def can_view_task(task, user):
     if task.director.user == user:
         return True
 
+    if task.project.admin.user == user:
+        return True
+
     return UserToTask.objects.filter(task=task, user__user=user).exists() or UserToProject.objects.filter(
         project=task.project,
         user__user=user,
     ).exists()
+
+
+def can_comment_task(task, user):
+    return can_view_task(task, user)
 
 
 # ============================
@@ -75,23 +82,37 @@ class TaskView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def get_tasks(self, request):
         filter_data = self.filter(request)
-        user = filter_data.result.pop('user')
+        user = filter_data.result.pop('user', None)
         search = request.data.get('search') or request.query_params.get('search')
 
-        user_tasks = self.queryset.filter(usertotask__user__user=user, **filter_data.result)
-        director_tasks = Task.objects.filter(director__user=user, **filter_data.result)
-        user_tasks = self.apply_search(user_tasks, search)
-        director_tasks = self.apply_search(director_tasks, search)
+        if user is not None:
+            user_tasks = self.queryset.filter(usertotask__user__user=user, **filter_data.result)
+            director_tasks = Task.objects.filter(director__user=user, **filter_data.result)
+            user_tasks = self.apply_search(user_tasks, search)
+            director_tasks = self.apply_search(director_tasks, search)
 
-        if not request.data.get('has_section', True):
-            user_tasks = user_tasks.exclude(
-                id__in=Subquery(TaskToSection.objects.filter(task_id=OuterRef('pk')).values('task_id'))
-            )
-            director_tasks = director_tasks.exclude(
-                id__in=Subquery(TaskToSection.objects.filter(task_id=OuterRef('pk')).values('task_id'))
-            )
+            if not request.data.get('has_section', True):
+                user_tasks = user_tasks.exclude(
+                    id__in=Subquery(TaskToSection.objects.filter(task_id=OuterRef('pk')).values('task_id'))
+                )
+                director_tasks = director_tasks.exclude(
+                    id__in=Subquery(TaskToSection.objects.filter(task_id=OuterRef('pk')).values('task_id'))
+                )
 
-        all_tasks = user_tasks.union(director_tasks).order_by(order_by(request))
+            all_tasks = user_tasks.union(director_tasks).order_by(order_by(request))
+        else:
+            user_projects = Project.objects.filter(
+                Q(admin__user=request.user) | Q(usertoproject__user__user=request.user)
+            ).distinct()
+            all_tasks = self.queryset.filter(project__in=user_projects, **filter_data.result)
+            all_tasks = self.apply_search(all_tasks, search)
+
+            if not request.data.get('has_section', True):
+                all_tasks = all_tasks.exclude(
+                    id__in=Subquery(TaskToSection.objects.filter(task_id=OuterRef('pk')).values('task_id'))
+                )
+
+            all_tasks = all_tasks.order_by(order_by(request))
 
         result = Pagination(request=request, queryset=all_tasks).get()
         result['results'] = self.serializer_class(result.get('results'), many=True).data
@@ -212,8 +233,7 @@ class DetailTaskView(viewsets.ModelViewSet):
         if task is None:
             self.error.is_not_found()
 
-        user_to_project = UserToProject.objects.filter(user__user=request.user, project=task.project)
-        if not user_to_project.exists():
+        if not can_view_task(task, request.user):
             self.error.forbidden()
 
         result = self.serializer_class(task).data
@@ -316,7 +336,7 @@ class TaskCommentAPIView(APIView):
 
     def post(self, request, task_id):
         task = get_object_or_404(Task, pk=task_id)
-        if not can_edit_task(task, request.user):
+        if not can_comment_task(task, request.user):
             return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
         text = (request.data.get('text') or '').strip()
