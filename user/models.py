@@ -44,3 +44,33 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.userprofile.save()
+
+
+class RegistrationRequest(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_REJECTED = 'rejected'
+
+    STATUS_CHOICES = (
+        (STATUS_PENDING, 'Ожидает'),
+        (STATUS_APPROVED, 'Принята'),
+        (STATUS_REJECTED, 'Отклонена'),
+    )
+
+    mts_login = models.CharField('Логин МТС', max_length=150, blank=True, default='')
+    username = models.CharField('Логин', max_length=150, blank=True, default='')
+    password = models.CharField('Пароль', max_length=128, blank=True, default='')
+    full_name = models.CharField('ФИО', max_length=150, blank=True, default='')
+    comment = models.TextField('Комментарий', blank=True, default='')
+    status = models.CharField('Статус', max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    created_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, default=None,
+                                     verbose_name='Созданный пользователь')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Заявка на регистрацию'
+        verbose_name_plural = 'Заявки на регистрацию'
+
+    def __str__(self):
+        return self.mts_login or self.username or f'Заявка #{self.pk}'

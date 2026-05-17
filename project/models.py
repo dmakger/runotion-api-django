@@ -29,6 +29,23 @@ class Project(models.Model):
 @receiver(post_save, sender=Project)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
+        default_sections = [
+            ('Новые', '#55D6BE', False),
+            ('В работе', '#6C8CFF', False),
+            ('Тестирование', '#F2B84B', False),
+            ('Выполненные', '#63D471', True),
+        ]
+        for position, (name, color_value, is_final) in enumerate(default_sections, start=1):
+            color, _ = Color.objects.get_or_create(value=color_value, defaults={'name': name})
+            SectionProject.objects.create(
+                project=instance,
+                name=name,
+                position=position,
+                color=color,
+                is_final=is_final,
+            )
+        return
+    if created:
         SectionProject.objects.create(project=instance, name='Новые')
         SectionProject.objects.create(project=instance, name='В процессе')
         SectionProject.objects.create(project=instance, name='Выполненные')

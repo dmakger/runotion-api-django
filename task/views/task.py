@@ -339,7 +339,18 @@ class TaskDeleteAPIView(DestroyAPIView):
     queryset = Task.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
+    def destroy(self, request, *args, **kwargs):
+        if not can_edit_task(self.get_object(), request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
     def perform_destroy(self, instance):
+        user_to_tasks = UserToTask.objects.filter(task=instance)
+        CommentTask.objects.filter(user__in=user_to_tasks).delete()
+        SubtaskChecklist.objects.filter(checklist__user__in=user_to_tasks).delete()
+        ChecklistTask.objects.filter(user__in=user_to_tasks).delete()
+        TaskToSection.objects.filter(task=instance).delete()
+        user_to_tasks.delete()
         instance.delete()
 
 

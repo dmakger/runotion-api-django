@@ -19,6 +19,7 @@ urlpatterns = [
     path("<int:pk>/delete/", ProjectDeleteAPIView.as_view()),
     path("roles/", RoleProjectListAPIView.as_view()),
     path("<int:project_pk>/users/", ProjectUserListAPIView.as_view()),
+    path("<int:project_pk>/users/<int:user_pk>/", ProjectUserListAPIView.as_view()),
 
     #  Секции по проектам
     path("<int:project_pk>/section/all/", SectionProjectListView.as_view()),

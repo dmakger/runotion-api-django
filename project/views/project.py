@@ -16,6 +16,7 @@ from service.filter.project import ProjectFilter
 from service.order_by.order_by import order_by
 from service.pagination import Pagination
 from service.validator import Validator
+from task.models import ChecklistTask, CommentTask, SubtaskChecklist, Task, TaskToSection, UserToTask
 from user.models import UserProfile
 
 
@@ -121,6 +122,13 @@ class ProjectDeleteAPIView(DestroyAPIView):
         return super().destroy(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
+        tasks = Task.objects.filter(project=instance)
+        user_to_tasks = UserToTask.objects.filter(task__in=tasks)
+        CommentTask.objects.filter(user__in=user_to_tasks).delete()
+        SubtaskChecklist.objects.filter(checklist__user__in=user_to_tasks).delete()
+        ChecklistTask.objects.filter(user__in=user_to_tasks).delete()
+        TaskToSection.objects.filter(task__in=tasks).delete()
+        user_to_tasks.delete()
         instance.delete()
 
 
@@ -212,7 +220,7 @@ class ProjectUserListAPIView(APIView):
 
         user_id = request.data.get('user_id')
         role_id = request.data.get('role_id')
-        if user_id is None or role_id is None:
+        if not user_id or not role_id:
             return Response({'detail': 'user_id and role_id are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         user_profile = UserProfile.objects.filter(pk=user_id).first()
@@ -230,3 +238,18 @@ class ProjectUserListAPIView(APIView):
         )
         serializer = UserToProjectSerializer(user_to_project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, project_pk, user_pk=None):
+        project = self.get_project(project_pk)
+        if project is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not self.can_manage_users(project, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        if user_pk is None:
+            return Response({'detail': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if project.admin_id == user_pk:
+            return Response({'detail': 'Project admin cannot be removed'}, status=status.HTTP_400_BAD_REQUEST)
+
+        UserToProject.objects.filter(project=project, user_id=user_pk).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

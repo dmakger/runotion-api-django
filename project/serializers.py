@@ -7,7 +7,7 @@ from project.service import get_admin_project
 from task.models import TaskToSection, Task, UserToTask
 from task.service import get_responsible_task
 from user.models import UserProfile
-from user.serializers import PreviewUserSerializer
+from user.serializers import PreviewUserSerializer, UserSerializer
 
 
 # =====================
@@ -83,7 +83,7 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
 #       РЈР§РђРЎРўРќРРљР РџР РћР•РљРўРђ
 # ==============================
 class UserToProjectSerializer(serializers.ModelSerializer):
-    user = PreviewUserSerializer()
+    user = UserSerializer()
     role = RoleProjectSerializer()
 
     class Meta:
