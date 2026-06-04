@@ -463,7 +463,7 @@ class TaskAttachmentAPIView(APIView):
 
     def post(self, request, task_id):
         task = get_object_or_404(Task, pk=task_id)
-        if not can_edit_task(task, request.user):
+        if not can_view_task(task, request.user):
             return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
         files = request.FILES.getlist('attachments') or request.FILES.getlist('files')
@@ -489,7 +489,8 @@ class TaskAttachmentDeleteAPIView(DestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         attachment = self.get_object()
-        if not can_edit_task(attachment.task, request.user):
+        is_owner = attachment.user is not None and attachment.user.user == request.user
+        if not is_owner and not can_edit_task(attachment.task, request.user):
             return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
