@@ -4,7 +4,8 @@ from rest_framework.routers import DefaultRouter
 from task.views.section import SectionProjectDetailAPIView, UpdateTaskSectionProject, AddTaskToSectionProject
 from task.views.task import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
     SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView, \
-    TaskUpdateAPIView, TaskCategoryView, TaskUserAPIView, TaskCommentAPIView
+    TaskUpdateAPIView, TaskCategoryView, TaskUserAPIView, TaskCommentAPIView, NotificationAPIView, \
+    TaskAttachmentAPIView, TaskAttachmentDeleteAPIView
 
 router = DefaultRouter()
 
@@ -18,6 +19,7 @@ urlpatterns = [
     path("project/<int:project_id>/category/", TaskCategoryView.as_view({'get': 'get_categories', 'post': 'create_category'})),
     path("category/<int:pk>/update/", TaskCategoryView.as_view({'put': 'update', 'patch': 'partial_update'})),
     path("category/<int:pk>/delete/", TaskCategoryView.as_view({'delete': 'destroy'})),
+    path("notifications/", NotificationAPIView.as_view()),
 
     # Задачи по секциям
     path("<int:task_id>/add/section/<int:section_project_id>/", AddTaskToSectionProject.as_view()),
@@ -30,6 +32,8 @@ urlpatterns = [
     path("<int:task_id>/users/", TaskUserAPIView.as_view()),
     path("<int:task_id>/users/<int:user_id>/", TaskUserAPIView.as_view()),
     path("<int:task_id>/comments/", TaskCommentAPIView.as_view()),
+    path("<int:task_id>/attachments/", TaskAttachmentAPIView.as_view()),
+    path("attachment/<int:pk>/delete/", TaskAttachmentDeleteAPIView.as_view()),
     path("<int:pk>/delete/", TaskDeleteAPIView.as_view()),
 
     # Чеклист у задачи

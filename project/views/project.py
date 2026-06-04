@@ -17,6 +17,7 @@ from service.order_by.order_by import order_by
 from service.pagination import Pagination
 from service.validator import Validator
 from task.models import ChecklistTask, CommentTask, SubtaskChecklist, Task, TaskToSection, UserToTask
+from task.notifications import send_notification
 from user.models import UserProfile
 
 
@@ -230,11 +231,30 @@ class ProjectUserListAPIView(APIView):
         if user_profile == project.admin:
             return Response({'detail': 'Project admin already has a role'}, status=status.HTTP_400_BAD_REQUEST)
 
-        user_to_project, _ = UserToProject.objects.update_or_create(
+        current_user = UserProfile.objects.get(user=request.user)
+        old_user_to_project = UserToProject.objects.filter(project=project, user=user_profile).select_related('role').first()
+        user_to_project, created = UserToProject.objects.update_or_create(
             project=project,
             user=user_profile,
             defaults={'role': role},
         )
+        if created:
+            send_notification(
+                user=user_profile,
+                notification_type='project_member_added',
+                title=f'Вас добавили в проект {project.name}',
+                actor=current_user,
+                project=project,
+            )
+        elif old_user_to_project is not None and old_user_to_project.role_id != role.id:
+            send_notification(
+                user=user_profile,
+                notification_type='project_role_changed',
+                title=f'Изменена роль в проекте {project.name}',
+                text=role.name,
+                actor=current_user,
+                project=project,
+            )
         serializer = UserToProjectSerializer(user_to_project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -250,5 +270,16 @@ class ProjectUserListAPIView(APIView):
         if project.admin_id == user_pk:
             return Response({'detail': 'Project admin cannot be removed'}, status=status.HTTP_400_BAD_REQUEST)
 
-        UserToProject.objects.filter(project=project, user_id=user_pk).delete()
+        user_to_project = UserToProject.objects.filter(project=project, user_id=user_pk).select_related('user').first()
+        if user_to_project is not None:
+            removed_user = user_to_project.user
+            user_to_project.delete()
+            current_user = UserProfile.objects.get(user=request.user)
+            send_notification(
+                user=removed_user,
+                notification_type='project_member_removed',
+                title=f'Вас удалили из проекта {project.name}',
+                actor=current_user,
+                project=project,
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)

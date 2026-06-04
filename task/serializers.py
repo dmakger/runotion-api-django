@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from project.serializers import PreviewProjectSerializer, PreviewSectionProjectSerializer, SectionProjectSerializer
-from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection, TaskCategory, CommentTask
+from task.models import Task, UserToTask, SubtaskChecklist, ChecklistTask, TaskToSection, TaskCategory, CommentTask, \
+    Notification, TaskAttachment, CommentTaskAttachment
 from task.service import get_responsible_task, get_collaborator_task, get_observer_task
 from user.serializers import PreviewUserSerializer
 
@@ -68,6 +69,7 @@ class DetailTaskSerializer(serializers.ModelSerializer):
     project = PreviewProjectSerializer()
     category = TaskCategorySerializer(read_only=True)
     section = serializers.SerializerMethodField()
+    attachments = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -103,13 +105,70 @@ class DetailTaskSerializer(serializers.ModelSerializer):
             return None
         return PreviewSectionProjectSerializer(task_to_section.section_project).data
 
+    @staticmethod
+    def get_attachments(instance):
+        attachments = TaskAttachment.objects.filter(task=instance).select_related('user', 'user__user')
+        return TaskAttachmentSerializer(attachments, many=True).data
+
+
+class AttachmentFileUrlMixin:
+    def get_file_url(self, instance):
+        if not instance.file:
+            return ''
+
+        request = self.context.get('request')
+        if request is not None:
+            return request.build_absolute_uri(instance.file.url)
+        return instance.file.url
+
+
+class TaskAttachmentSerializer(AttachmentFileUrlMixin, serializers.ModelSerializer):
+    user = PreviewUserSerializer(read_only=True)
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TaskAttachment
+        fields = ['id', 'user', 'name', 'size', 'content_type', 'file', 'file_url', 'created_at']
+        read_only_fields = fields
+
+
+class CommentTaskAttachmentSerializer(AttachmentFileUrlMixin, serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CommentTaskAttachment
+        fields = ['id', 'name', 'size', 'content_type', 'file', 'file_url', 'created_at']
+        read_only_fields = fields
+
 
 class CommentTaskSerializer(serializers.ModelSerializer):
     user = PreviewUserSerializer(source='user.user', read_only=True)
+    attachments = CommentTaskAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = CommentTask
-        fields = ['id', 'user', 'text', 'created_at']
+        fields = ['id', 'user', 'text', 'attachments', 'created_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    actor = PreviewUserSerializer(read_only=True)
+    project = PreviewProjectSerializer(read_only=True)
+    task = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'type', 'title', 'text', 'is_read', 'created_at', 'actor', 'project', 'task']
+
+    @staticmethod
+    def get_task(instance):
+        if instance.task is None:
+            return None
+        return {
+            'id': instance.task.id,
+            'name': instance.task.name,
+            'code': instance.task.code,
+            'project': instance.task.project_id,
+        }
 
 
 # ========================

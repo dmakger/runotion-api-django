@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from service.position import get_new_position, fix_positions
 from task.models import Task, UserLevelTask, UserToTask, CommentTask, ChecklistTask, SubtaskChecklist, TaskToSection, \
-    TaskCategory
+    TaskCategory, TaskAttachment, CommentTaskAttachment
 
 
 #  Задачи
@@ -41,6 +41,14 @@ class CommentTaskAdmin(admin.ModelAdmin):
 
 
 #  Задачи к Секции
+class TaskAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['task', 'name', 'user', 'size', 'content_type', 'created_at']
+
+
+class CommentTaskAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['comment', 'name', 'size', 'content_type', 'created_at']
+
+
 class ChecklistTaskAdmin(admin.ModelAdmin):
     list_display = ['user', 'name', 'position', 'completed_at', 'created_at']
 
@@ -68,5 +76,7 @@ admin.site.register(TaskToSection, TaskToSectionAdmin)
 admin.site.register(UserLevelTask, UserLevelTaskAdmin)
 admin.site.register(UserToTask, UserToTaskAdmin)
 admin.site.register(CommentTask, CommentTaskAdmin)
+admin.site.register(TaskAttachment, TaskAttachmentAdmin)
+admin.site.register(CommentTaskAttachment, CommentTaskAttachmentAdmin)
 admin.site.register(ChecklistTask, ChecklistTaskAdmin)
 admin.site.register(SubtaskChecklist, SubtaskChecklistAdmin)

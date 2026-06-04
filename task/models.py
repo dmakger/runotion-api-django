@@ -138,6 +138,68 @@ class CommentTask(models.Model):
         return f"{self.user.task.name} ===> {self.user.user.name}"
 
 
+class TaskAttachment(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='attachments',
+                             verbose_name='Task')
+    user = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, null=True, blank=True,
+                             verbose_name='User')
+    file = models.FileField('File', upload_to='task/attachments/')
+    name = models.CharField('Name', max_length=255)
+    size = models.PositiveIntegerField('Size', default=0)
+    content_type = models.CharField('Content type', max_length=128, blank=True, default='')
+    created_at = models.DateTimeField('Created at', auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Task attachment"
+        verbose_name_plural = "Task attachments"
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f"{self.task.name} ===> {self.name}"
+
+
+class CommentTaskAttachment(models.Model):
+    comment = models.ForeignKey(CommentTask, on_delete=models.CASCADE, related_name='attachments',
+                                verbose_name='Comment')
+    file = models.FileField('File', upload_to='task/comment/attachments/')
+    name = models.CharField('Name', max_length=255)
+    size = models.PositiveIntegerField('Size', default=0)
+    content_type = models.CharField('Content type', max_length=128, blank=True, default='')
+    created_at = models.DateTimeField('Created at', auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Comment attachment"
+        verbose_name_plural = "Comment attachments"
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f"{self.comment.user.task.name} ===> {self.name}"
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Получатель',
+                             related_name='notifications')
+    actor = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, verbose_name='Инициатор',
+                              null=True, blank=True, related_name='sent_notifications')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name='Проект',
+                                null=True, blank=True, default=None)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, verbose_name='Задача',
+                             null=True, blank=True, default=None)
+    type = models.CharField('Тип', max_length=64)
+    title = models.CharField('Заголовок', max_length=180)
+    text = models.TextField('Текст', blank=True, default='')
+    is_read = models.BooleanField('Прочитано', default=False)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Уведомление'
+        verbose_name_plural = 'Уведомления'
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f"{self.user.name} ===> {self.title}"
+
+
 # =============================
 #     Чеклист у задачи
 # =============================

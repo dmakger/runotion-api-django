@@ -10,8 +10,10 @@ from rest_framework.views import APIView
 from project.models import SectionProject
 from project.serializers import SectionProjectSerializer, TaskForSectionProjectSerializer
 from task.models import TaskToSection, Task
+from task.notifications import notify_task_participants
 from task.serializers import TaskSerializer, TaskToSectionSerializer
 from task.views.task import can_edit_task
+from user.models import UserProfile
 
 
 def reorder_task_to_section(task_to_section, new_section_project, position):
@@ -82,6 +84,15 @@ class UpdateTaskSectionProject(APIView):
             new_section_project,
             request.data.get('position'),
         )
+        if old_section_project != new_section_project:
+            current_user = UserProfile.objects.get(user=request.user)
+            notify_task_participants(
+                task=task,
+                notification_type='task_stage_changed',
+                title=f'Изменен этап задачи {task.code}',
+                text=f'{old_section_project.name} -> {new_section_project.name}',
+                actor=current_user,
+            )
 
         return JsonResponse({
             "new_section_id": task_to_section.section_project.id,
