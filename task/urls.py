@@ -5,7 +5,8 @@ from task.views.section import SectionProjectDetailAPIView, UpdateTaskSectionPro
 from task.views.task import TaskView, DetailTaskView, ChecklistTaskView, ChecklistTaskDeleteAPIView, TaskDeleteAPIView, \
     SubtaskChecklistTaskView, SubtaskChecklistTaskDeleteAPIView, SubtaskChecklistUpdateAPIView, ChecklistUpdateAPIView, \
     TaskUpdateAPIView, TaskCategoryView, TaskUserAPIView, TaskCommentAPIView, NotificationAPIView, \
-    TaskAttachmentAPIView, TaskAttachmentDeleteAPIView
+    TaskAttachmentAPIView, TaskAttachmentDeleteAPIView, TaskAttachmentDownloadAPIView, \
+    CommentTaskAttachmentDownloadAPIView
 
 router = DefaultRouter()
 
@@ -33,7 +34,9 @@ urlpatterns = [
     path("<int:task_id>/users/<int:user_id>/", TaskUserAPIView.as_view()),
     path("<int:task_id>/comments/", TaskCommentAPIView.as_view()),
     path("<int:task_id>/attachments/", TaskAttachmentAPIView.as_view()),
+    path("attachment/<int:pk>/download/", TaskAttachmentDownloadAPIView.as_view()),
     path("attachment/<int:pk>/delete/", TaskAttachmentDeleteAPIView.as_view()),
+    path("comment-attachment/<int:pk>/download/", CommentTaskAttachmentDownloadAPIView.as_view()),
     path("<int:pk>/delete/", TaskDeleteAPIView.as_view()),
 
     # Чеклист у задачи

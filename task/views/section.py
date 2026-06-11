@@ -12,7 +12,7 @@ from project.serializers import SectionProjectSerializer, TaskForSectionProjectS
 from task.models import TaskToSection, Task
 from task.notifications import notify_task_participants
 from task.serializers import TaskSerializer, TaskToSectionSerializer
-from task.views.task import can_edit_task
+from task.views.task import can_edit_task, create_task_history
 from user.models import UserProfile
 
 
@@ -86,6 +86,16 @@ class UpdateTaskSectionProject(APIView):
         )
         if old_section_project != new_section_project:
             current_user = UserProfile.objects.get(user=request.user)
+            create_task_history(
+                task=task,
+                actor=current_user,
+                history_type='task_stage_changed',
+                title='Изменен этап задачи',
+                text=f'{old_section_project.name} -> {new_section_project.name}',
+                old_value=old_section_project.name,
+                new_value=new_section_project.name,
+                request=request,
+            )
             notify_task_participants(
                 task=task,
                 notification_type='task_stage_changed',

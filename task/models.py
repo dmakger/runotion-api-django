@@ -176,6 +176,27 @@ class CommentTaskAttachment(models.Model):
         return f"{self.comment.user.task.name} ===> {self.name}"
 
 
+class TaskHistory(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='history', verbose_name='Task')
+    actor = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, null=True, blank=True,
+                              verbose_name='Actor')
+    type = models.CharField('Type', max_length=64)
+    title = models.CharField('Title', max_length=255)
+    text = models.TextField('Text', blank=True, default='')
+    field = models.CharField('Field', max_length=64, blank=True, default='')
+    old_value = models.TextField('Old value', blank=True, default='')
+    new_value = models.TextField('New value', blank=True, default='')
+    created_at = models.DateTimeField('Created at', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Task history'
+        verbose_name_plural = 'Task history'
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f"{self.task.name} ===> {self.title}"
+
+
 class Notification(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Получатель',
                              related_name='notifications')

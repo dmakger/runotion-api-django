@@ -1,4 +1,5 @@
 from django.db.models import Subquery, OuterRef, Q
+from django.http import FileResponse
 from django.utils import timezone
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -18,11 +19,11 @@ from service.task import get_new_code_task_by_project, get_new_position_checklis
     get_new_position_subtask_checklist_by_user_to_task
 from service.validator import Validator
 from task.models import Task, ChecklistTask, UserToTask, SubtaskChecklist, TaskToSection, TaskCategory, CommentTask, \
-    Notification, TaskAttachment, CommentTaskAttachment
+    Notification, TaskAttachment, CommentTaskAttachment, TaskHistory
 from task.notifications import notify_task_participants, send_notification
 from task.serializers import TaskSerializer, DetailTaskSerializer, ChecklistTaskSerializer, SubtaskChecklistSerializer, \
     ChecklistTaskPreviewSerializer, TaskCategorySerializer, CommentTaskSerializer, NotificationSerializer, \
-    TaskAttachmentSerializer
+    TaskAttachmentSerializer, TaskHistorySerializer
 from task.service import get_collaborator_task, get_observer_task, get_responsible_task
 from user.models import UserProfile
 
@@ -31,10 +32,14 @@ def can_edit_task(task, user):
     if task.director.user == user:
         return True
 
+    if task.project.admin_id and task.project.admin.user == user:
+        return True
+
+    min_edit_level = get_collaborator_task().level.value
     return UserToTask.objects.filter(
         task=task,
         user__user=user,
-        level__in=[get_responsible_task(), get_collaborator_task()],
+        level__level__value__gte=min_edit_level,
     ).exists()
 
 
@@ -42,7 +47,7 @@ def can_view_task(task, user):
     if task.director.user == user:
         return True
 
-    if task.project.admin.user == user:
+    if task.project.admin_id and task.project.admin.user == user:
         return True
 
     return UserToTask.objects.filter(task=task, user__user=user).exists() or UserToProject.objects.filter(
@@ -66,6 +71,67 @@ def create_attachment(instance, uploaded_file, user=None):
     if isinstance(instance, Task):
         return TaskAttachment.objects.create(task=instance, user=user, **data)
     return CommentTaskAttachment.objects.create(comment=instance, **data)
+
+
+TASK_FIELD_LABELS = {
+    'name': 'Название',
+    'description': 'Описание',
+    'deadline': 'Дедлайн',
+    'completed_at': 'Завершение',
+    'category_id': 'Категория',
+}
+
+
+def format_history_value(value):
+    if value is None or value == '':
+        return '—'
+    if hasattr(value, 'name'):
+        return value.name or '—'
+    if hasattr(value, 'isoformat'):
+        try:
+            return timezone.localtime(value).strftime('%d.%m.%Y %H:%M')
+        except ValueError:
+            return str(value)
+    return str(value)
+
+
+def get_task_field_value(task, field, raw_value=None):
+    if field == 'category_id':
+        if raw_value in [None, '', 'null']:
+            return '—'
+        category = TaskCategory.objects.filter(pk=raw_value).first()
+        return format_history_value(category)
+    return format_history_value(raw_value if raw_value is not None else getattr(task, field, None))
+
+
+def serialize_task_history(history, request=None):
+    return TaskHistorySerializer(history, context={'request': request} if request is not None else {}).data
+
+
+def broadcast_task_history(history, request=None):
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'task_comments_{history.task_id}',
+        {
+            'type': 'history.created',
+            'history': serialize_task_history(history, request),
+        },
+    )
+
+
+def create_task_history(task, actor, history_type, title, text='', field='', old_value='', new_value='', request=None):
+    history = TaskHistory.objects.create(
+        task=task,
+        actor=actor,
+        type=history_type,
+        title=title,
+        text=text,
+        field=field,
+        old_value=format_history_value(old_value),
+        new_value=format_history_value(new_value),
+    )
+    broadcast_task_history(history, request)
+    return history
 
 
 # ============================
@@ -196,7 +262,7 @@ class TaskCategoryView(viewsets.ModelViewSet):
 
     def get_project(self, request, project_id):
         project = get_object_or_404(Project, pk=project_id)
-        has_project_access = project.admin.user == request.user or UserToProject.objects.filter(
+        has_project_access = (project.admin_id and project.admin.user == request.user) or UserToProject.objects.filter(
             user__user=request.user,
             project=project
         ).exists()
@@ -277,7 +343,11 @@ class TaskUpdateAPIView(UpdateAPIView):
                 old_value = getattr(task, model_field)
                 new_value = request.data.get(field)
                 if str(old_value or '') != str(new_value or ''):
-                    self.changed_fields.append(field)
+                    self.changed_fields.append({
+                        'field': field,
+                        'old_value': get_task_field_value(task, field, old_value),
+                        'new_value': get_task_field_value(task, field, new_value),
+                    })
 
         kwargs['partial'] = True
         return super().update(request, *args, **kwargs)
@@ -286,6 +356,19 @@ class TaskUpdateAPIView(UpdateAPIView):
         task = serializer.save()
         current_user = UserProfile.objects.get(user=self.request.user)
         if getattr(self, 'changed_fields', []):
+            for change in self.changed_fields:
+                field_label = TASK_FIELD_LABELS.get(change['field'], change['field'])
+                create_task_history(
+                    task=task,
+                    actor=current_user,
+                    history_type='task_changed',
+                    title=f'Изменено поле: {field_label}',
+                    text=f"{change['old_value']} -> {change['new_value']}",
+                    field=change['field'],
+                    old_value=change['old_value'],
+                    new_value=change['new_value'],
+                    request=self.request,
+                )
             notify_task_participants(
                 task=task,
                 notification_type='task_changed',
@@ -340,6 +423,14 @@ class TaskUserAPIView(APIView):
         user_to_task = UserToTask.objects.filter(task=task, user=user).select_related('level').first()
         if user_to_task is None:
             UserToTask.objects.create(task=task, user=user, level=level)
+            create_task_history(
+                task=task,
+                actor=current_user,
+                history_type='task_member_added',
+                title='Добавлен участник',
+                text=f'{user.name}: {level.name}',
+                request=request,
+            )
             send_notification(
                 user=user,
                 notification_type='task_member_added',
@@ -355,6 +446,16 @@ class TaskUserAPIView(APIView):
             user_to_task.save(update_fields=['level'])
             if old_level_id := getattr(old_level, 'id', None):
                 if old_level_id != level.id:
+                    create_task_history(
+                        task=task,
+                        actor=current_user,
+                        history_type='task_role_changed',
+                        title='Изменена роль участника',
+                        text=f'{user.name}: {old_level.name} -> {level.name}',
+                        old_value=old_level.name,
+                        new_value=level.name,
+                        request=request,
+                    )
                     send_notification(
                         user=user,
                         notification_type='task_role_changed',
@@ -383,6 +484,14 @@ class TaskUserAPIView(APIView):
         removed_user = user_to_task.user
         user_to_task.delete()
         current_user = UserProfile.objects.get(user=request.user)
+        create_task_history(
+            task=task,
+            actor=current_user,
+            history_type='task_member_removed',
+            title='Удален участник',
+            text=removed_user.name,
+            request=request,
+        )
         send_notification(
             user=removed_user,
             notification_type='task_member_removed',
@@ -404,11 +513,16 @@ class TaskCommentAPIView(APIView):
         if not can_view_task(task, request.user):
             return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
-        comments = CommentTask.objects.filter(user__task=task).select_related('user__user').prefetch_related(
+        comments = CommentTask.objects.filter(user__task=task).select_related('user__user', 'user__user__user').prefetch_related(
             'attachments'
         ).order_by('created_at', 'id')
-        return Response(CommentTaskSerializer(comments, many=True, context={'request': request}).data,
-                        status=status.HTTP_200_OK)
+        history = TaskHistory.objects.filter(task=task).select_related('actor', 'actor__user').order_by(
+            'created_at', 'id'
+        )
+        feed = list(CommentTaskSerializer(comments, many=True, context={'request': request}).data)
+        feed += list(TaskHistorySerializer(history, many=True, context={'request': request}).data)
+        feed.sort(key=lambda item: (item['created_at'], item['id']))
+        return Response(feed, status=status.HTTP_200_OK)
 
     def post(self, request, task_id):
         task = get_object_or_404(Task, pk=task_id)
@@ -472,10 +586,19 @@ class TaskAttachmentAPIView(APIView):
 
         current_user = get_object_or_404(UserProfile, user=request.user)
         attachments = [create_attachment(task, uploaded_file, current_user) for uploaded_file in files]
+        for attachment in attachments:
+            create_task_history(
+                task=task,
+                actor=current_user,
+                history_type='task_attachment_added',
+                title='Добавлено вложение',
+                text=attachment.name,
+                request=request,
+            )
         notify_task_participants(
             task=task,
             notification_type='task_attachment',
-            title=f'РќРѕРІРѕРµ РІР»РѕР¶РµРЅРёРµ РІ Р·Р°РґР°С‡Рµ {task.code}',
+            title=f'Новое вложение в задаче {task.code}',
             text=task.name,
             actor=current_user,
         )
@@ -495,9 +618,40 @@ class TaskAttachmentDeleteAPIView(DestroyAPIView):
         return super().destroy(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
+        current_user = get_object_or_404(UserProfile, user=self.request.user)
+        create_task_history(
+            task=instance.task,
+            actor=current_user,
+            history_type='task_attachment_removed',
+            title='Удалено вложение',
+            text=instance.name,
+            request=self.request,
+        )
         if instance.file:
             instance.file.delete(save=False)
         instance.delete()
+
+
+class TaskAttachmentDownloadAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        attachment = get_object_or_404(TaskAttachment, pk=pk)
+        if not can_view_task(attachment.task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        return FileResponse(attachment.file.open('rb'), as_attachment=True, filename=attachment.name)
+
+
+class CommentTaskAttachmentDownloadAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        attachment = get_object_or_404(CommentTaskAttachment, pk=pk)
+        if not can_view_task(attachment.comment.user.task, request.user):
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        return FileResponse(attachment.file.open('rb'), as_attachment=True, filename=attachment.name)
 
 
 class NotificationAPIView(APIView):

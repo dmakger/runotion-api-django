@@ -58,6 +58,12 @@ class TaskCommentConsumer(AsyncJsonWebsocketConsumer):
             'comment': event['comment'],
         })
 
+    async def history_created(self, event):
+        await self.send_json({
+            'type': 'history.created',
+            'history': event['history'],
+        })
+
     @database_sync_to_async
     def user_can_view_task(self):
         task = Task.objects.filter(pk=self.task_id).select_related('director__user', 'project__admin__user').first()
